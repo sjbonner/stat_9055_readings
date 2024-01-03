@@ -1,0 +1,626 @@
+\documentclass[12pt]{article}
+
+\usepackage{bm,enumerate,amsmath,lineno,url}
+\usepackage[margin=2.0cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{float}
+\usepackage{natbib}
+\usepackage{hyperref}
+\usepackage[nolists, nomarkers]{endfloat}
+\usepackage{lastpage}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=blue,
+    citecolor=blue
+}
+
+%% Define new listing float
+\newfloat{listing}{tbp}{lolisting}
+\floatname{listing}{Listing}
+
+\newcommand{\listoflistings}{\lstlistoflistings}%
+\DeclareDelayedFloat{listing}[flol]{\textbf{List of Listings}}
+
+% Custom commands
+\newcommand{\todi}{\overset{\mathcal{D}}{\to}}
+\newcommand{\topr}{\overset{\mathcal{P}}{\to}}
+\newcommand{\var}{\mbox{Var}}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+% Footer
+\pagestyle{fancy}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{1pt}
+\fancyhf{}
+\lfoot{Copyright Simon Bonner, University of Western Ontario, 2022}
+\rfoot{Page \thepage\ of \pageref{LastPage}}
+
+% Line number fix for equations
+\newcommand*\patchAmsMathEnvironmentForLineno[1]{%
+  \expandafter\let\csname old#1\expandafter\endcsname\csname #1\endcsname
+  \expandafter\let\csname oldend#1\expandafter\endcsname\csname end#1\endcsname
+  \renewenvironment{#1}%
+     {\linenomath\csname old#1\endcsname}%
+     {\csname oldend#1\endcsname\endlinenomath}}%
+\newcommand*\patchBothAmsMathEnvironmentsForLineno[1]{%
+  \patchAmsMathEnvironmentForLineno{#1}%
+  \patchAmsMathEnvironmentForLineno{#1*}}%
+\AtBeginDocument{%
+\patchBothAmsMathEnvironmentsForLineno{equation}%
+\patchBothAmsMathEnvironmentsForLineno{align}%
+\patchBothAmsMathEnvironmentsForLineno{flalign}%
+\patchBothAmsMathEnvironmentsForLineno{alignat}%
+\patchBothAmsMathEnvironmentsForLineno{gather}%
+\patchBothAmsMathEnvironmentsForLineno{multline}%
+}
+
+\begin{document}
+
+<<prelims,echo=FALSE,include=FALSE>>=
+library(knitr)
+
+opts_chunk$set(echo=FALSE,
+               include=FALSE,
+               message=FALSE,
+               eval=TRUE,
+               cache=FALSE,
+               fig.height=3,
+               fig.width=6,
+               fig.align="center",
+               warning=FALSE)
+@
+
+\begin{center}
+  \begin{Large}
+    {\bf SS9055B: Generalized Linear Models}\\
+
+    \medskip
+    {\bf Section 1: Linear Regression}\\
+    {\bf Version 2022.1}
+\end{Large}
+\end{center}
+
+\linenumbers
+
+\section*{Objectives}
+By the end of the lecture you should be able to:
+\begin{enumerate}
+\item Describe the assumptions of linear regression and the least squares method of estimation.
+\item Fit linear regression models in \texttt{R} and summarize the results.
+\item Conduct hypothesis tests and compute information criterion to compare model fit.
+\item Construct graphical and numeric diagnostics to assess assumptions and goodness-of-fit.
+\end{enumerate}
+
+\section{Introduction}
+\label{sec:introduction}
+
+You have probably guessed that the name generalized linear models refers to the fact that the models we will study in this course are generalization of the linear regression model. In particular, the framework of generalized linear models includes models that extend the assumptions of linear regression by first allowing the response to have a distribution other than the normal and second defining a relationship between the mean and the linear predictor (the linear combination of coefficients and predictors often denoted by $\bm x_i'\bm \beta$) to be something other than the identity function. Don't worry if that doesn't make sense yet. It will soon. 
+
+To understand the work we do this semester you will need to be familiar with the basic methods of linear regression. This reading provides a quick, and by no means complete, summary of the essential topics of linear regression and introduces many of the basic functions in \texttt{R} that we will use throughout the semester. Some of the material may be new, and some of my opinions may be different from what you have been taught before. However, you should already be familiar with most of the material.
+
+The \texttt{R} code for reproducing the output in this document is included in the accompanying file \texttt{1\_linear\_regression.R}. Note that I have become a devotee of the packages in the tidyverse (\href{https://www.tidyverse.org/}{https://www.tidyverse.org/}) including \texttt{dplyr} and \texttt{ggplot}. Some of the syntax may not be familiar if you use base \texttt{R}, like the use of the pipe operator \texttt{\%>\%}. However, this should not be a problemif you have used \texttt{R} before. I find the syntax of the tidyverse functions is quite intuitive, and I am happy to help if you have not used the tidyverse before. There are also lots of resources on the web. 
+
+\section{Assumptions}
+The objective of linear regression is to predict the distribution of a scalar response variable conditional on a fixed number, $p$, of observed predictors variables. I will let $n$ denote the number of observations, $Y_i$ the response variable for observatoin $i$,  and $x_{i1},\ldots,x_{ip}$ the corresponding values of the predictor variables. The basic assumptions of the linear regression model are that:
+\begin{enumerate}
+\item $Y_1,\ldots,Y_n$ are independent conditional on the values of the predictors.
+\item The expected value of $Y_i$, $\mu_i$, is a linear function of the predictors:
+  \[
+    \mu_i=E(Y_i)=\beta_0 + \beta_1 x_{i1} + \cdots + \beta_p x_{ip}.
+  \]
+\item All $Y_i$ have the same variance, $\mbox{Var}(Y_i)=\sigma^2$, $i=1,\ldots,n$.
+\item Each $Y_i$ is normally distributed. 
+\end{enumerate}
+The first three assumptions are key to the model, but the assumption of normality is sometimes omitted. Least squares estimates of the coefficients, $\beta_0,\ldots,\beta_p$, can be computed regardless of the distribution of the error terms, $\epsilon_i=Y_i-\mu_i$, $i=1,\ldots,n$.  Moreover, least squares estimators are weighted averages of the observations and so their normality can be justified through the central limit theorem if $n$ is large even if the distribution of the error term is not normal or is unknown.
+
+These assumptions can be written more succinctly by saying that $Y_1,\ldots,Y_n$ are independent random variables such that
+\[
+  Y_i|x_{i1},\ldots,x_{ip} \sim \mbox{Normal}(\mu_i,\sigma^2)
+\]
+where
+\[
+  \mu_i = \bm x_i' \bm \beta
+\]
+with $\bm x_i=(1,x_{i1},\ldots,x_{ip})'$ and $\bm \beta=(\beta_0,\ldots,\beta_p)'$. We can write this even more compactly with matrix notation and the multivariate normal distribution by stating that
+\[
+  \bm Y | X \sim N_n(\bm \mu,\sigma^2 I_n)
+\]
+where $\bm Y=(Y_1,\ldots,Y_n)'$, $X$ is the $n \times (p+1)$ design matrix with $\bm x_i'$ in the $i^{th}$ row, $\bm \mu=X \bm \beta$. The notation $N_n(\bm \mu, \Sigma)$ represents the multivariate $n$-dimensional normal distribution with mean $\bm \mu$ and variance matrix $\Sigma$, and $I_n$ is the identity matrix of dimension $n$. Note that the assumption of independence is hidden in the fact that the variance matrix is diagonal.
+
+The simple linear regression model can also be extended by allowing the variance covariance matrix to be other than the identity. First, we might assume that the variance matrix remains diagonal but is no longer a multiple of the identity matrix so that the variance of the error is not the same for all observations. That is, we can assume that 
+\[
+  \bm Y | X \sim N_n(\bm \mu,\sigma^2 W)
+\]
+where $W=\mbox{diag}(w_1,\ldots,w_n)'$ for some positive weights $w_i>0$, $i=1,\ldots,n$. Even more generally, we might assume that  
+\[
+  \bm Y | X \sim N_n(\bm \mu,\sigma^2\Sigma)
+\]
+for some symmetric, positive-definite matrix $\Sigma$. It is common to assume that $W$ or $\Sigma$ are known so that only $\sigma^2$ must be estimated for the variance matrix to be defined.  
+
+\section{Least Squares Estimation}
+
+I don't want to dwell on theory too much in this section, but I will introduce least squares estimation for completeness. As we will see in later sections, these estimates are also equivalent to the maximum likelihood estimates given the assumption that the response variables are normally distributed.
+
+The ordinary least squares estimators of the coefficients, denoted $\hat{\bm \beta}$, are found by minimizing the sum of the squares of the differences between observed values and their fitted means (i.e., the sum of squared residuals):
+\[
+  \hat{\bm \beta}=\underset{\bm \beta}{\argmin} \sum_{i=1}^n \left(Y_i - \mu_i\right)^2=\underset{\bm \beta}{\argmin} (\bm Y - X\bm \beta)'(\bm Y - X\bm \beta). 
+\]
+This equation can be minimized mathematically with the result that
+\[
+  \hat{\bm \beta} = (X'X)^{-1}X'\bm Y. 
+\]
+It is also possible to show that under the assumptions of the linear regression model the variance of $\hat{\bm \beta}$ is
+\[
+  \mbox{Var}(\hat{\bm \beta}) = \sigma^2(X'X)^{-1}.
+\]
+Note that I have written $\hat{\bm \beta}$ as a function of the random variable $\bm Y$ instead of a single set of observed values, $\bm y$, to highlight the fact that the estimator, $\hat{\bm \beta}$, is itself a random variable. Unfortunately, the common notation does not distinguish the estimator, $\hat{\bm \beta} = (X'X)^{-1}X'\bm Y$, from estimate corresponding to a specific set of observed values, $\bm y$, which is usually also denoted by $\hat{\bm \beta} = (X'X)X'\bm y$.
+
+If the response variables do not have the same variance or are not independent then we can still obtain estimates by minimizing the weighted or generalized sums of squares. The resulting estimators are respectively
+\begin{equation}
+  \label{eq:wls}
+  \hat{\bm \beta} = (X'W^{-1}X)^{-1}X'W^{-1}\bm Y
+\end{equation}
+with
+\[
+  \mbox{Var}(\hat{\bm \beta}) = \sigma^2(X'W^{-1}X)^{-1},
+\]
+if $\mbox{Var}(\bm Y)=\sigma^2 W$ and 
+\begin{equation}
+  \label{eq:gls}
+  \hat{\bm \beta} = (X'\Sigma^{-1}X)^{-1}X'\Sigma^{-1}\bm Y
+\end{equation}
+with
+\[
+  \mbox{Var}(\hat{\bm \beta}) = \sigma^2(X'\Sigma^{-1}X)^{-1}.
+\]
+if $\mbox{Var}(\bm Y)=\sigma^2 \Sigma$. These are referred to as the weighted least squares (equation \eqref{eq:wls}) and generalized least squares estimators (equation \eqref{eq:gls}) estimators. Note that the use of ``generalized'' here is not connected with the framework of generalized linear modelling. It will be good to keep these expressions in mind as we will see them in the later readings that introduce inference for generalized linear models.
+
+\section{Example}
+
+The remainder of this reading focuses on the more applied aspects of linear regression and its implementation in \texttt{R}. As an example I will consider the \texttt{mtcars} data set which is included in the \texttt{datasets} package contained in base R and can be loaded with the command \texttt{data(mtcars)}. According to the help file (which can be opened with the command \texttt{help(mtcars)}), the data was extracted from the 1974 issues of \textit{Motor Trend} magazine and was originally published in \citet{henderson1981}. The data contains observations of 11 different variables for 32 different cars. For simplicity we will focus on 5 of the variables:
+\begin{itemize}
+\item mpg -- Miles/(US) gallon
+\item cyl -- Number of cylinders
+\item hp -- Gross horsepower  
+\item wt -- Weight (1000 lbs)
+\item am -- Transmission (0 = automatic, 1 = manual) 
+\end{itemize}
+We will treat the efficiency of the cars in miles/gallon as the response variable and try to predict this with the other four variables. We will treat the number of cylinders and the type of transmission as categorical predictors and the horsepower and weight as continuous predictors. The plot in Figure \ref{fig:pairs} illustrates the pairwise relationships between all 5 variables. 
+
+<<setup>>=
+## Load packages
+library(tidyverse)
+library(GGally)
+library(patchwork)
+library(broom)
+@
+
+<<data>>=
+## Load mtcars package
+data(mtcars)
+
+## Initial manipulations
+mycars <- mtcars %>%
+  as_tibble() %>% # Convert data frame to tibble
+  select(mpg, cyl, hp, wt, am) %>% # Select variables of interest
+  mutate(cyl = as.factor(cyl), am = as.factor(am)) # Convert cyl and am to factors
+@
+
+<<pairs, fig.show="as.is", fig.height=6, include = TRUE, fig.cap = "Pairs plot of the 5 variables selected from the \\texttt{mtcars} data. The plots on the diagonal illustrate the density of each variable. The numbers above the diagonal describe the correlations when both variables are contiuous.">>=
+## Pairs plot
+ggpairs(mycars,
+        upper = list(continuous = "cor",
+                     combo = "na",
+                     discrete = "na"),
+        lower = list(continuous = "points",
+                     combo = "points",
+                     discrete = "points"),
+        diag = list(continuous = "barDiag", discrete = "barDiag"))
+@
+
+\section{Main Effects}
+As a first example, we will consider the model including all of the main effects (i.e., modelling the efficiency as a linear function of the 4 predictor variables). Output from fitting this model using the function \texttt{lm()} is provided in Listing \ref{list:main-effects-1} and contains the following pieces:
+\begin{itemize}
+\item Call: simply repeats the call to \texttt{lm()}. This is useful if you are fitting many models.
+\item Residuals: summary statistics for the residuals. 
+\item Coefficients: a table summarizing the estimated values of the coefficients and providing the results of simple tests of significance for each.
+\item Unlabelled: overall summaries of the fitted model.
+\end{itemize}
+Although it is tempting to start at the top of the summary the information at the bottom is what should be considered first. The $F$-test considers whether there is evidence that any of the predictors are important (i.e., that any linear combination of the predictors is better at predicting the response values than setting the mean to the same value for all of the observations). In this case, the $F$-test provides very, very strong evidence that at least one of the predictor variables is linearly related to the cars' efficiency ($F=33.57$ on 5 and 26 DF, $p<.0001$). The model explains almost 87\% of the total variability in the efficiency, and the estimate of the residual standard error was just 2.41~mpg.
+
+Moving up we reach the table of coefficients. However, we really need to do one more thing before we can interpret the values in this table. Anytime you quote an estimate in your results you need to provide a measure of uncertainty, and the best measures of uncertainty are confidence intervals. 95\% confidence intervals for the coefficients computed with the function \texttt{confint()} are provided in Listing \ref{list:main-effects-2}.
+
+Combining the results from the table of coefficients and the confidence intervals, we see that the intercept is estimated to be 33.71~mpg with 95\% confidence interval (28.35, 39.06). We interpret this to mean that if our model is correct then the average automatic car (the reference value) with 4 cylinders (the reference value), 0 horsepower, and 0 weight would drive 33.71~miles on 1~gallon of gas. This is not a very useful interpretation because a car with no horsepower and no weight doesn't actually exist and doesn't go anywhere, ever. A much more reasonable thing is to provide the estimate of the response for some representative values of the predictors, like the mean of each predictor value or the values for one specific observation. This can be done by computing the fitted value which is discussed in Section \ref{sec:fitted}.
+
+The coefficients of the explanatory variables in a regression model are always interpreted in terms of how the mean of the response would be affected if we were to change that one variable by one unit while all of the other predictors remain the same. We say that we are considering the effect of one variable while adjusting for the effect of all other variables.
+
+Let's start with the categorical variables: the number of cylinders and the type of transmission. Categorical variables are incorporated into the linear predictor by encoding the categories in terms of a number of indicator or dummy variables. If a predictor has $m$ levels then we need to include the intercept and $m-1$ dummy variables to separate the levels. There are many ways in which this can be done and we need to know the specific encoding that has been implemented before we can interpret the coefficients. For example, the number of cylinders has three levels, 4, 6, and 8, and so the same model can be fit by defining two dummy variables
+\begin{align*}
+  x_{i1}&=1(\mbox{car $i$ has 6 cylinders})\\
+  x_{i2}&=1(\mbox{car $i$ has 8 cylinders})\\
+  \intertext{or}
+  x_{i1}&=1(\mbox{car $i$ has 6 cylinders})\\
+  x_{i2}&=1(\mbox{car $i$ has 6 or 8 cylinders})\\
+  \intertext{or}
+  x_{i1}&=1(\mbox{car $i$ has 6 cylinders})\\
+  x_{i2}&=1(\mbox{car $i$ has 4 cylinders})\\
+\end{align*}
+where the function $1(\cdot)$ is the indicator function such that $1(S)=1$ if $S$ is true and $0$ if $S$ is false. By default, the design matrix in \texttt{R} is constructed using the first encoding so that the first level alphabetically is treated as the reference level. Each dummy variable then models the difference in the mean response between the reference level and one of the other levels (when all other variables are held fixed).  
+
+In the case of the number of cylinders, 4 cylinders is taken as the reference value, the first dummy variable models the difference in the mean efficiency between cars with 4 and 6 cylinders (and the same horsepower, weight, and transmission type) and the second models the difference in the mean efficiency between cars with 4 and 8 cylinders (and the same horsepower, weight, and transmission type). We would need to consider the difference between these parameters if we wanted to know the difference between cars with 6 an 8 cylinders (and the same horsepower, weight, and transmission type).
+
+For example, the point estimate of the effect of 6 vs 4 cylinders is -3.03 with 95\% confidence interval (-5.92,-.14) and p-value .041. We interpret this to mean that there is reasonable evidence that cars with 6 cylinders are less efficient than cars with 4 cylinders, driving on average 3.03~mpg less (95\%CI=.14,5.92) given that they are the same otherwise (i.e., they have the same horsepower, weight, and transmission type).
+
+The coefficients of continuous predictors are easier to interpret because coding is not an issue. We interpret the coefficient as the change in the mean response when the predictor increases by one unit while the other predictors remain fixed. For example, the point estimate for the coefficient of weight is -2.50~mpg/1000~lbs with 95\% confidence interval (-4.32,-.68) and $p$-value .009. This provides very strong evidence that the efficiency of the cars is affected by weight while the other variables are fixed. All else (number of cylinders, horespower, and type of transmission) being equal, we estimate that the mean efficiency decreases by 2.50 miles per gallon of gas  for each increase in weight of 1000~lbs and we are 95\% confident that this difference is between .68 and 4.32 miles.
+
+Finally, the \texttt{summary()} function provides the five-number summary for the residuals. This is seldom important as it does not provide enough information to really judge the distribution of the residuals, and we need to look at more sophisticated diagnostics, discussed in Section \ref{sec:diagnostics}. 
+
+\begin{listing}
+<<model1, include = TRUE>>=
+## Fit main effects model
+lm1 <- lm(mpg ~ cyl + hp + wt + am, data = mycars)
+summary(lm1)
+@ 
+\caption{Summary of the multiple linear regression model predicting the efficiency of the 32 cars as a function of the main effect of the 4 explanatory variables.}
+\label{list:main-effects-1}
+\end{listing}
+
+\begin{listing}
+<<model1-ci, include = TRUE>>=
+confint(lm1)
+@ 
+\caption{95\% confidence intervals for the coefficients of the main effects model.}
+\label{list:main-effects-2}
+\end{listing}
+
+\section{Testing and $p$-values}
+
+You are going to find out that I am very opinionated, and there are two things in the summary of the linear regression model that I don't like. The first is that it provides results for the $t$-test comparing the intercept to 0. The second is that it prints those pesky dots and stars to indicate whether the $t$-tests for each coefficients are between certain levels of significance.
+
+The reason that I don't like the test for the intercept is that it is rarely important to test the value of the intercept, and if it is important then it is unlikely that the correct test is a comparison with zero. It makes sense to test whether the coefficients associated with each of the predictors is non-zero because this has a clear interpretation in terms of identifying which predictors are important for predicting the mean (after adjusting for the other predictors). However, there is no inherent reason why we should compare the intercept to zero. More generally, \texttt{summary()} prints the value of the test statistic and corresponding $p$-value for each predictor in the model without asking if they are needed, and these tests are often irrelevant or shouldn't be conducted in the first place (as when we discuss interactions below). However, our eyes get attracted to the highly significant $p$-values, and it's hard to ignore them once you've seen them. 
+
+If you are looking atht eh $p$-values for all of the different coefficients then it probably means that you haven't thought enough before you started your analysis. It's likely that specific predictors are of interest as they relate to the research hypotheses while others are included in the model simply to ensure that the assumptions are satisfied. it is always good to limit the number of hypothesis tests you conduct in any analysis to reduce the chance of a Type I Error, and you must train yourself to consider only the tests that are important. To be frank, I would much rather that summary included confidence intervals and not the tests.
+
+I don't like the stars because it perpetuates the myth that there are some universal levels of significance that are more important than others (the almighty .05 being the most common). The $p$-value for a test is a continuous value that falls between 0 and 1 and should be interpreted as such. A $p$-value close to 0 provides strong evidence that the null hypothesis (in this case that the corresponding coefficient is equal to 0) is incorrect and as the $p$-value increases the evidence gets weaker and weaker. A $p$-value like .001 or less can always be interpreted as very strong evidence against the null and in most cases any $p$-value above .25 can safely be interpreted to mean that the value of the test statistic could easily have occurred by chance if the null hypothesis is true and so there is very little evidence against the null. However, interpreting $p$-values in between depends on many factors including the design of the experiment and the consequences of making a wrong decision either way. We will try to interpret $p$-values along this continuum instead of comparing $p$-values to a single threshold and declaring that a test is either significant or not. I highly encourage you to read the American Statistical Association's view on $p$-values provided in \citet{wasserstein2016}. I will discuss significance testing more in Section \ref{sec:selection} on model selection.
+
+\section{Interactions}
+
+Interaction terms allow us to examine how the effect that one explanatory variable has on the mean response changes as we change the value of one or more of the other predictors. For example, we might expect that the effect weight on efficiency is bigger for cars with more cylinders (at least, someone with mechanical knowledge might think that). We'll examine these effects through a series of models including just two of the predictors and their interactions.
+
+First let's consider the case of two categorical variables by fitting the model including the number of cylinders and the type of transmission. There are three levels for the number of cylinders and two types of transmission, so the number of predictors required to add the interaction term in the model $(3-1)\times(2-1)=2$.  The output from this model is provided in Listing \ref{list:interactions-1} and the interaction terms are labelled as \texttt{cyl6:am1} and \texttt{cyl8:am1} in the table of coefficients. We can interpret these either as describing the difference in the effect of changing the number of cylinders from 4 to 6 to 8 for manual vs automatic cars or as the difference in the effect of changing the type of transmission for cars with 6 and 8 cylinders in comparison to cars with only 4 cylinders. The two are equivalent. For example, the estimate of the first term is -3.73 with 95\% confidence interval (-10.09,2.62). We can interpret this to mean that the estimated difference in mean efficiency between cars with 4 and 6 cylinders is 3.73~mpg lower for manual cars (\texttt{am=1}) than for automatic cars  (\texttt{am=0}). Alternatively, we can say that the estimated difference in mean efficiency between manual and automatic cars is 3.73~mpg lower for cars with 6 cylinders than for cars with 4 cylinders. Note, however, that the 95\% confidence interval easily covers 0 and the $p$-value, .131, is quite large indicating that there is little evidence that this interaction is real. The difference we observed could easily have occurred by chance if the effect of changing from 4 to 6 cylinders is the same for automatic and manual cars (or the effect of changing from automatic to manual cars is the same for cars with 4 and 6 cylinders).
+
+\begin{listing}
+<<model2, include = TRUE>>=
+## First interaction model
+lm2 <- lm(mpg ~ cyl * am, data = mycars)
+summary(lm2)
+confint(lm2)
+@ 
+\caption{Summary of the multiple linear regression model predicting the efficiency of the 32 cars as a function of the number of cylinders, the type of transmission, and their interaction.}
+\label{list:interactions-1}
+\end{listing}
+
+Next consider a model including one categorical predictor, one continuous predictor, and their interaction. Models like this are most often interpreted by considering that the interaction term describes how the slope relating the mean response and the continuous predictor varies across the levels of the categorical predictor. Results for the model including transmission type, weight, and their interaction are provided in Listing \ref{list:interactions-2}. Based on this model, we would estimate that the efficiency decreases by 5.30~mpg more per 1000~lb increase in weight for manual cars (\texttt{am=1}) than for automatic cars  (\texttt{am=0}). I.e., if two cars differ in weight by 1000~lb then we would expect the difference in their efficiency to be 5.30~mpg lower if the cars are both manual than if they are both automatic. The 95\% confidence interval for the interaction is (-8.28,-2.34) which is bounded well below zero, and the $p$-value is .001, both of which provide strong evidence that the interaction term is not equal to zero. 
+
+\begin{listing}
+<<model3, include = TRUE>>=
+## Second interaction model
+lm3 <- lm(mpg ~ wt * am, data = mycars)
+summary(lm3)
+confint(lm3)
+@ 
+\caption{Summary of the multiple linear regression model predicting the efficiency of the 32 cars as a function of transmission type, weight, and their interaction.}
+\label{list:interactions-2}
+\end{listing}
+
+Finally, we consider the interaction between two continuous predictor. In this case, the interaction models how the effect of one predictor changes when the value of the other predictor is increased by one unit. As in the case of two categorical variables, the interaction term is symmetric in that it can be interpreted equally as the change in the effect of the first predictor as the second is varied or vice versa. Listing \ref{list:interactions-3} provides the output from the model including the weight, horsepower, and their interaction as predictors of the efficiency. The estimate of the interaction of weight and horsepower is only .03~mpg, but the confidence interval, (.01,.04) , is very narrow and the $p$-value is only $.001$. We interpret this to mean that there is strong evidence of an interaction. We can say that we estimate that the effect of weight becomes more positive by .03~mpg/1000~lbs when horsepower increases by one unit. Equivalently, we also estimate that the mean effect of a one unit increase in horsepower is more positive by .03~mpg for cars weighing 1000~lbs more. 
+
+\begin{listing}
+<<model4, include = TRUE>>=
+## Third interaction model
+lm4 <- lm(mpg ~ wt * hp, data = mycars)
+summary(lm4)
+confint(lm4)
+@ 
+\caption{Summary of the multiple linear regression model predicting the efficiency of the 32 cars as a function of horsepower, weight, and their interaction.}
+\label{list:interactions-3}
+\end{listing}
+
+\section{Model Comparison}
+
+Model comparison generally refers to the process of comparing the fit of two models with different sets of predictors. For any model there are two competing issues to consider. We want to construct the best possible predictions for the response, but we also want to avoid including predictors that are not really important. We can always construct perfect predictions of the observed data simply by setting $\mu_i=y_i$. One way this can be done by including a categorical covariate with a separate value for each observation. However, this model presents an extreme case of overfitting and is practically useless. It does not allow us to make conclusions about the general trends in the data and cannot be used to compute predictions for new observations since this would introduce new values of the covariate into the model for which the coefficients are unknown. 
+
+There are two general strategies for comparing models to identify the predictors that provide the best description of the data while avoiding overfitting. The first is to compare nested models via a hypothesis test with the null hypothesis that some of the coefficients are equal to fixed values (usually 0 which effectively removes the associated predictors from the model). The second is to apply some sort of information criterion like the AIC. 
+
+\subsection{$F$-tests and ANOVA}
+
+Two regression models are said to be nested if the expression for the linear predictor in one model (the reduced model) can be obtained by fixing the values of some coefficients in the other model (the full model) \footnote{Technically, two models are nested if the columns of the design matrix of the reduced model belong to the vector space formed by the columns of the design matrix of the full model. However, we won't need to go into such detail.}. Most often the reduced model is constructed by setting the values of some of the coefficients in the full model to 0 which effectively removes these predictors from the model (i.e., the reduced model assumes that the mean response is not affected by these predictors). Two nested models can be compared via an $F$-test. The degrees of freedom for the numerator of the test is equal to the number of parameters in the full model that are fixed to obtain the reduced model. If the degrees of freedom in the numerator is one then the $F$-test is equivalent to a $t$-test. In fact, the $t$-tests presented in the model summaries produced by \texttt{R} are equivalent to $F$-tests comparing the fitted model with the reduced models formed by removing each coefficient in the model one-at-a-time.
+
+Consider the model of the \texttt{mtcars} data including the main effects of transmission type and the number of cylinders, and their interaction. This model has two more terms than the model including only the main effects and so two extra $t$-tests are included in the summary table. This is not a substantial problem. However, if the number of categories for these two variables were larger then we would need to conduct many $t$-tests to test each of the coefficients associated with this interaction term. This is inefficient, and it also introduces the multiple testing problem. The more tests we conduct, the higher the chances of committing at least one Type I Error and including a predictor that does not actually affect the mean of the response. A better strategy would be to assess first whether there is any evidence of an interaction at any levels of the two predictors. This can be examined with an $F$-test implemented in \texttt{R} with the \texttt{anova()} function. If there is sufficient evidence of an effect at some level then we can use the $t$-tests to identify where.
+
+The ANOVA table for a regression model is constructed by conducting the $F$-tests removing each term in the model (i.e., setting the corresponding coefficients equal to 0) one-at-a-time. A term is either a main effect or an interaction and may include multiple coefficients, and the column labeled \texttt{Df} identifies the number of coefficients (i.e., the degrees of freedom of the numerator of the $F$-test statistic). 
+
+Listing \ref{list:anova-1} contains the ANOVA table for the model including the number of cylinders, the transmission type, and their interaction. The $F$-test for the interaction term has 2 degrees of freedom (because there are two coefficients included in this term of the model) and the $p$-value is .269. This indicates that there is little evidence at all for the interaction overall and hence there is no point in conducting the $t$-tests for the individual coefficients included within this term.
+
+The ANOVA table also illustrates the problem with \texttt{R} conducting too many tests. The table includes the tests for each of the main effects, \texttt{cyl} and \texttt{am}, as well as the test for the interaction term, \texttt{cyl:am}. However, these tests of the main effects are irrelevant. It does not make sense to test for the main effect of a predictor if that predictor is part of a significant interaction. In this example, it does not make sense to test the main effect of the number of cylinders if there is an interaction between the number of cylinders and the type of transmission. The whole point of the interaction is that the effect of the number of cylinders depends on the type transmission, and so the question about the main effect is irrelevant. These tests can only be performed if the interaction term is deemed to be not significant and the model is refit with only the main effects. Unfortunately, our eye is immediately drawn to these tests -- especially when they are highlighted with multiple asterisks. I would prefer that \texttt{R} did not present the results from the tests of the main effects or interactions that are part of higher order interactions. 
+
+\begin{listing}
+<<ANOVA1, include = TRUE>>=
+## ANOVA for model including the number of cylinders, transmission type, and their interaction
+anova(lm2)
+@
+\caption{ANOVA table for the model including the number of cylinders, transmission type, and their interaction.}
+\label{list:anova-1}
+\end{listing}
+
+\subsection{Model Comparison Criterion}
+
+The alternative to hypothesis testing is to compare models based on some criterion that measures the fit of the model to the data while accounting for the number of parameters in the linear predictor. The simplest criterion is the adjusted R-squared which discounts the R-squared for the number of parameters in the model. In comparison to the R-squared, which measures the proportion of variance in the response explained by the model and always increases as more predictors are added, the adjusted R-squared may increase or decrease depending on how much the residual standard error is reduced. In fact, the adjusted R-squared can be negative indicating that the model is no better than the model with constant mean.
+
+Several other criterion exist and the most common are the AIC (Akaike's information criterion) and the BIC (Bayesian information criterion). Both are formulated as minus twice the log-likelihood of the model, a term that decreases as the fit of the model to the data improves, plus a penalty term determined by the number of parameters. Hence, models with smaller values of the criteria are preferred. Generally, a difference of 2 in the AIC or BIC of two models is considered to represent strong evidence for preferring one model over another and anything less than this is interpreted as meaning that neither model can be chosen over the other. If a model has $K$ parameters then the penalty for the AIC is $2K$ and the penalty for the BIC is $K \log(n)$. A simple linear regression model with an intercept, a slope, and an unknown residual variance would have $K=3$ parameters. A model with a single, categorical predictor with 5 categories and an unknown residual variance would have $k=6$ parameters. Heuristically, the BIC penalizes the number of parameters more than the AIC (at least, when $n > e^2=7.4$) favouring simpler models (i.e., models with fewer predictors).
+
+One advantage of these criteria is that they can be applied to compare models that are not nested. In terms of linear regression, we can compare two models based on any set of predictors provided that the response variables are the same.
+
+Listings \ref{list:aic-1} and \ref{list:bic-1} provide the AIC and BIC values for the four models compared by the ANOVA table in the previous section (note that although the ANOVA table contains only three tests it compares four models since each test represents a comparison between two different models). The AIC provides strong evidence that the three models including \texttt{cyl} are all preferred to the model including only \texttt{am}, which means essentially that \texttt{cyl} is an important predictor. There is also fairly strong evidence in favour of the model including only the main effects of the two predictors, but I would say that this is not completely definitive. Both the model including the interaction and the model including only \texttt{cyl} have AIC values that are about 2 units higher. In contrast, the BIC, which favours simpler models, provides strong evidence to prefer the model with only the main effects or the model with \texttt{cyl} alone, but does not distinguish between these. Which of these criterion to use is a matter of preference and debate, which we won't get into. What's important for this course is to know the difference and to be able to use these criterion properly.
+
+\begin{listing}
+  <<AIC1, include = TRUE>>=
+  ## Compute AIC values for the models including cylinder, transmission type, and their interaction
+  lm2a <- lm(mpg ~ cyl + am, data = mycars)
+  lm2b <- lm(mpg ~ cyl, data = mycars)
+  lm2c <- lm(mpg ~ am, data = mycars)
+  
+  AIC(lm2, lm2a, lm2b, lm2c)
+@
+\caption{AIC values for comparing the models including the interaction between \texttt{cyl} and \texttt{am} (lm2), the main effects of both \texttt{cyl} and \texttt{am} (lm2a), the main effect of \texttt{cyl} alone (lm2b), and the main effect of \texttt{am} alone (lm2c). }
+\label{list:aic-1}
+\end{listing}
+
+\begin{listing}
+  <<BIC1, include = TRUE>>=
+  ## Compute BIC values for the models including cylinder, transmission type, and their interaction
+  BIC(lm2, lm2a, lm2b, lm2c)
+@
+\caption{BIC values for comparing the models including the interaction between \texttt{cyl} and \texttt{am} (lm2), the main effects of both \texttt{cyl} and \texttt{am} (lm2a), the main effect of \texttt{cyl} alone (lm2b), and the main effect of \texttt{am} alone (lm2c). }
+\label{list:bic-1}
+\end{listing}
+
+
+\section{Model Selection}
+\label{sec:selection}
+
+The term model selection generally refers to choosing which predictors should be included in the linear predictor and, perhaps, whether these predictors should be transformed in anyway (e.g., by including interactions, polynomial terms, etc). There are two main strategies for selecting the predictors in a model. The first strategy is to use some form of stepwise selection. This includes backward selection which starts with a large number of predictors and removes terms one at a time until all remaining predictors are important, forward selection which starts with the null model and adds predictors one at a time until none of the remaining predictors improves the model in a meaningful way, and what is often called stepwise selection which allows predictors both to be added and removed in alternate steps. Comparisons between models may be conducted either with tests of significance or with model comparison criterion like the AIC and BIC.
+
+As an example, we might start with the model containing all four predictors and their pairwise interactions and then select a reduced model through stepwise selection based on the AIC using the \texttt{step()} function in \texttt{R}. Results are provided in Listing \ref{list:selection-1}. Starting from the initial model which includes the intercept, 5 coefficients associated with the main effects, and 9 coefficients related to the interactions, the final model includes only the main effects plus coefficients related to the interactions between the number of cylinders and the horsepower (\texttt{cly6:hp} and \texttt{cyl8:hp}) and between the weight and type of transmission (\texttt{wt:am1}). One thing to note is that selection is performed with respect to the entire term not the individual coefficients in the model. For example, the interaction between the number of cylinders and the horsepower is represented by two coefficients (\texttt{cly6:hp} and \texttt{cyl8:hp}), but these coefficients are never assessed individually. Instead, we either keep both or remove both. 
+
+\begin{listing}
+<<selection1, include = FALSE>>=
+## Perform stepwise selection
+lm5 <- lm(mpg ~ (cyl + hp + wt + am)^2, data = mycars)
+step(lm5)
+@
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{verbatim}
+## Start:  AIC=67.24
+## mpg ~ (cyl + hp + wt + am)^2
+## 
+##          Df Sum of Sq    RSS    AIC
+## - cyl:wt  2    0.6926 103.16 63.457
+## - cyl:am  2    1.8176 104.28 63.804
+## - cyl:hp  2    5.8623 108.33 65.022
+## - hp:wt   1    0.0052 102.47 65.243
+## - hp:am   1    3.4193 105.89 66.292
+## - wt:am   1    6.1169 108.58 67.097
+## <none>                102.47 67.241
+## 
+## Step:  AIC=63.46
+## mpg ~ cyl + hp + wt + am + cyl:hp + cyl:am + hp:wt + hp:am + 
+##     wt:am
+## 
+##          Df Sum of Sq    RSS    AIC
+## - cyl:am  2    1.3945 104.55 59.886
+## - hp:wt   1    0.0841 103.24 61.483
+## - hp:am   1    3.6818 106.84 62.579
+## - cyl:hp  2   13.1830 116.34 63.305
+## <none>                103.16 63.457
+## - wt:am   1    9.9355 113.09 64.399
+##
+## ...
+## 
+## Step:  AIC=57.08
+## mpg ~ cyl + hp + wt + am + cyl:hp + wt:am
+## 
+##          Df Sum of Sq    RSS    AIC
+## <none>                108.53 57.082
+## - cyl:hp  2    21.939 130.47 58.973
+## - wt:am   1    19.049 127.58 60.257
+## 
+## Call:
+## lm(formula = mpg ~ cyl + hp + wt + am + cyl:hp + wt:am, data = mycars)
+## 
+## Coefficients:
+## (Intercept)         cyl6         cyl8           hp           wt          am1  
+##    36.65881     -7.19711    -10.82118     -0.08268     -2.31293      9.14282  
+##     cyl6:hp      cyl8:hp       wt:am1  
+##     0.05954      0.07634     -3.04685
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+\caption{Truncated output from stepwise selection starting with the model with all two way interactions. Full output can be obtained by running the code in \texttt{R}.}
+\label{list:selection-1}
+\end{listing}
+
+The second strategy is to start with some candidate set of models which correspond to different hypotheses about the system being studied and then to compare these models. It is natural to consider information criterion for model selection in this strategy because the models representing different hypotheses will rarely be nested. For example, an expert with a good understanding of automechanics (not me) might hypothesize that the efficiency of cars is best predicted by either: 1) the number of cylinders, horsepower, and their interactions, 2) the weight, type of transmission, and their interaction, or 3) the number of cylinders, transmission type, and their interaction. Listing \ref{list:selection-2} provides the AIC values for these 3 competing models. A difference in AIC of two or more is generally considered to be large, and so this provides clear evidence that the second model is preferred to the other three. 
+
+\begin{listing}
+<<selection2, include = TRUE>>=
+## Compare models with the AIC
+Model1 <- lm(mpg ~ cyl * hp, data = mycars)
+Model2 <- lm(mpg ~ wt * am, data = mycars)
+Model3 <- lm(mpg ~ cyl * am, data = mycars)
+AIC(Model1, Model2, Model3)
+@
+\caption{Comparison of models with AIC.}
+\label{list:selection-2}
+\end{listing}
+
+I strongly believe in the second strategy for a variety of reasons:
+\begin{enumerate}
+\item It limits the number of tests that are performed. As noted above, every extra test increases the chance of making an error and erroneously including/excluding a variable.
+  
+\item It limits the number of models that we fit. If many predictors are available then the stepwise selection may fit many different models. This will lead to overfitting and we are likely to choose models that are not plausible based on an expert understanding of the system under study.
+  
+\item It forces us to focus primarily on the science. Any statistical analysis is conducted to answer specific questions. Our analysis should answer these questions directly and should not go beyond these questions (unless this is explicitly stated). Applying a stepwise algorithm may often lead us to condcut tests outside the realm of scientific interest. 
+  
+\item This approach leads us to consider multiple models that may support different hypotheses rather than selecting one. Stepwise selection leads us to choose one ``best'' model and to ignore all others. Unfortunately, science doesn't work this way and it is rare for the data to support only one model. The second strategy allows us to consider multiple models. In the example there is one clear best model, but in most real analyses several models will have AIC values that are very close together. Reporting our uncertainty about which model is best supported by the data is crucial to presenting a transparent analysis. This also leads naturally to model averaging which allows estimates and predictions from different, competing models to be combined in a coherent way.
+\end{enumerate}
+I will admit that I often employ a mix of the two approaches. Following the second strategy, I will start with a candidate set of models and compare these via AIC. However, I will often perform backward selection on each of the models that competes for the best to see if they can be simplified (especially if the selected models contains complex, higher-order interactions). I feel that this strikes a balance between limiting the number of models that are fit and removing unnecessary predictors to try and simplify the results. The key is to be clear about exactly how model selection was performed, which models were selected for initial comparison and which were preferred, and what further \textit{post hoc} comparisons were performed to simplify the final model(s). 
+
+
+\section{Diagnostics}
+\label{sec:diagnostics}
+
+Regression diagnostics serve two purposes. First, they assess whether the assumptions of the model are likely to be satisfied (or are close enough to being satisfied that the results can be believed). Second, they assess how robust the results are by which I mean how sensitive the estimates are to the specific observed data and how much they might change if the data were manipulated (e.g., if observations were changed or removed).
+
+The assumptions of normality and equal variance are best assessed through plots of the residuals. Normality is assessed with a normal quantile-quantile plot. The assumption of constant variance is assessed by plotting the residuals versus the predictors and/or versus the fitted values. \texttt{R} includes built in functions to produce these plots, but I prefer to generate them myself so that I have more control. Figure \ref{fig:diagnostics1} displays plots of the residuals for the model of \texttt{mpg} including the main effects of both \texttt{cyl} and \texttt{am}. The QQ-plot is based on the raw residuals whereas the remaining plots are constructed from the standardized residuals which should have a distribution with mean zero and variance close to 1 regardless of the true residual standard error (if the assumptions of the model hold). I have used boxplots to show the distribution of the residuals versus \texttt{cyl} and \texttt{am} since both are categorical variables. The results suggest that the residuals are close to normally distributed but raise concerns regarding the assumption of constant of variance. In particular, there seems to be much lower variance in the efficiency of cars with 6 cylinders in comparison to cars with 4 or 8 cylinders. This would warrant further exploration. The plots of the residuals versus the predictors and the fitted values can also be used to check for outliers. There do not appear to be any extreme outliers in this analysis.  
+
+<<diagnostics1, include = TRUE, fig.show="as.is", fig.height=6, fig.width = 6, fig.cap = "Residuals plots for the model of \texttt{mpg} including the main effects of \\texttt{cyl} and \\texttt{am}. These include the normal QQ-plot of the residuals (top left), and plots of the standardized residuals versus \\texttt{cyl} (top right), \\texttt{am} (bottom left), and the fitted values (bottom right)." >>=
+## Add residuals to the original data
+mycars <- mycars %>%
+  mutate(Residuals = residuals(lm2a),
+         StdResiduals = rstandard(lm2a),
+         Fitted = fitted(lm2a))
+
+## QQ-plot of residuals
+plot1 <- mycars %>%
+  ggplot(aes(sample = Residuals)) +
+  geom_qq() +
+  geom_qq_line() 
+
+## Plot of residuals versus cyl
+plot2 <- mycars %>%
+  ggplot(aes(x = cyl, y = StdResiduals)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 0) +
+  ylab("Standardized Residuals")
+
+## Plot of residuals versus cyl
+plot3 <- mycars %>%
+  ggplot(aes(x = am, y = StdResiduals)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 0) +
+  ylab("Standardized Residuals")
+
+## Plot of residuals versus fitted values
+plot4 <- mycars %>%
+  ggplot(aes(x = Fitted, y = StdResiduals)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  ylab("Standardized Residuals")
+
+(plot1 + plot2) / (plot3 + plot4)
+@ 
+
+The assumption of independence is harder to assess because we need to have some idea of how the observations might be related to know what form of dependence to look for. If the observations are collected in time or over some spatial domain then it may make sense to check for dependence between close-by values. In the case of the cars data we might expect there to be dependence between the cars that are produced by the same manufacturer. For example, all of the cars made by Mazda might be more efficient than expected simply based on the values of \texttt{cyl} and \texttt{am}. This could be assessed by extracting the brand from the names of each car and then plotting the residuals versus the brand to look for patterns that might reveal some form of dependence.
+
+Alternative diagnostics can be used to assess how much the results depend on each of the observations in the data set. Common diagnostics are the leverage, Cook's distance, the DFBetas, and the DFFit. The leverage assesses where the vector of predictors for each observation fits into the overall distribution of the predictors. An observation has high leverage if its vector of covariates is far from the centre of the distribution. In one dimension, a point has high leverage if the value of the predictor is far above or far below the mean. Heuristically, the leverage measures the potential for a point to have an undue influence on the results, but it does not tell you whether this potential is realized. The actual influence is measured by Cook's distance which depends on both the leverage and the residual for the observations. A single point has a high Cook's distance if it has both high leverage and a high residual (i.e., it is an outlier). Such a point is said to be influential because the fit of the regression model will change significantly if the observation is removed. In fact, Cook's distance can be computed by removing each point from the data, refitting the model, and assessing the overall change in the fitted values. The DFFit is similar except that it only considers the change in the fitted value of the data point that has been removed. The DFBeta considers the change in each of the regression coefficients when each data point is removed. This leads to $n \times (p+1)$ different values -- one for each combination of observation and coefficient.
+
+Figure \ref{fig:diagnostics2} contains plots of the Leverage, Cook's distance, DFFit, and DFBeta for the intercept term for the model including the main effects of \texttt{cyl} and \texttt{am}. The DFBetas could also be plotted for the coefficients of the two predictors, but I have not included these simply to save space. There are guidelines for determining what values constitute significant deviations from the assumptions, but these are based on specific assumptions which may or may not be satisfied. I recommend looking at the plots to see if there are points whose values are extreme compared with the remaining observations. The plots show that the leverage is similar for all of the observations, but there is one observation with an unusually high Cook's distance (\#20) and one with an extreme value of DFBeta for the intercept (\#21). This suggests that the fitted model is sensitive to these two data points. If we remove either data point then estimates of the coefficients and the fitted values change significantly. It would be worth investigating this further to see if there may be problems with the data (perhaps a value was recorded incorrectly) or if there are other predictors that need to be included to improve the fit of the model to these observations. 
+
+<<diagnostics2, include = TRUE, fig.show="as.is", fig.height=6, fig.width = 6, fig.cap = "Further diagnostics plots for the model of \texttt{mpg} including the main effects of \\texttt{cyl} and \\texttt{am}. These include plots of the leverage (top left), Cook's distance (top right), DFFit (bottom left), and the and DFBeta for the intercept (bottom right)." >>=
+## Add residuals to the original data
+mycars <- mycars %>%
+  rowid_to_column("Observation") %>%
+  mutate(Leverage = hatvalues(lm2a),
+         CooksD = cooks.distance(lm2a),
+         DFfits = dffits(lm2a),
+         DFbetas = dfbetas(lm2a))
+
+## Leverage plot
+plot1 <- mycars %>%
+  ggplot(aes(x= Observation, y = Leverage)) +
+  geom_point() +
+  geom_hline(yintercept = 0)
+
+## Cook's Distance
+plot2 <- mycars %>%
+  ggplot(aes(x= Observation, y = CooksD)) +
+  geom_point() +
+  geom_hline(yintercept = 0)
+
+## DFfits
+plot3 <- mycars %>%
+  ggplot(aes(x= Observation, y = DFfits)) +
+  geom_point() +
+  geom_hline(yintercept = 0)
+
+## DFbetas
+plot4 <- mycars %>%
+  ggplot(aes(x= Observation, y = DFbetas[,"(Intercept)"])) +
+  geom_point() +
+  geom_hline(yintercept = 0)
+
+(plot1 + plot2) / (plot3 + plot4)
+@
+
+\section{Fitted Values and Prediction}
+\label{sec:fitted}
+
+Finally, I will consider the problems of computing fitted values and predicted values. These two problems are very related, but there is a subtle difference. Computing the fitted value for given values of the predictors, say $\bm x_{\mbox{new}}$ asks: What is the value of the mean response at $\bm x_{\mbox{new}}$? Predicting the response asks: What is the value of a new observation at $\bm x_{\mbox{new}}$? If one is interested only in a point estimate then the best answers to both questions are the same. We simply multiply the predictor values by the estimated coefficients, $\bm x_{\mbox{new}}' \hat{\bm \beta}$. The resulting value is both the estimate of the mean observation, $\hat \mu_{\mbox{new}}$ and the predicted value of the single observation, $\hat y_{\mbox{new}}$. The difference arises when we compute estimates of uncertainty, standard errors, for these values. Considering that
+\begin{align*}
+  \mbox{Var}(\hat \mu_{\mbox{new}})
+  &=\mbox{Var}(\bm x_{\mbox{new}}' \hat{\bm \beta})\\
+  &=\bm x_{\mbox{new}}'\mbox{Var}(\hat{\bm \beta})\bm x_{\mbox{new}}\\
+  &=\sigma^2 \bm x'_{\mbox{new}}(X'X)^{-1}x_{\mbox{new}}
+\end{align*}
+the standard error for the fitted value (i.e., the estimated mean) is
+\[
+  \mbox{SE}(\hat \mu_{\mbox{new}})=\hat \sigma \sqrt{\bm x'_{\mbox{new}}(X'X)^{-1} \bm x_{\mbox{new}}}.
+\]
+On the other hand
+\begin{align*}
+  \mbox{Var}(\hat Y_{\mbox{new}})
+  &=\mbox{Var}( \mu_{\mbox{new}} + \epsilon_{\mbox{new}})\\
+  &=\mbox{Var}( \mu_{\mbox{new}}) + \mbox{Var}(\epsilon_{\mbox{new}})\\
+  &=\sigma^2 \bm x'_{\mbox{new}}(X'X)^{-1}x_{\mbox{new}} + \sigma^2
+\end{align*}
+so that the standard error of the predicted value (the prediction error) is
+\[
+  \mbox{SE}(y_{\mbox{new}})=\hat \sigma \sqrt{\bm x'_{\mbox{new}}(X'X)^{-1} \bm x_{\mbox{new}} + 1}.
+\]
+Heuristically, the prediction error accounts for the variability of the single observation about its mean as well as the uncertainty in the mean itself. Whereas the standard error of the fitted value decreases to zero as the sample size increases the prediction error decreases toward $\sigma$, the residual error. If the model we have fitted is correct (i.e., it actually generated the data) then we will learn more and more about the mean response at any point as we collect more data. However, there will always be uncertainty in predicting the value of a new observation that we can never overcome. 
+
+Somewhat confusingly, both fitted values and predicted values are computed in base \texttt{R} with the \texttt{predict()} function, and the two are distinguished by setting the \texttt{type} argument. If \texttt{type='confidence'} then confidence intervals for the mean are computed. If \texttt{type='prediction'} then prediction intervals are computed instead. Listing \ref{list:predict1} compares the fitted values with 95\% confidence intervals and predicted values with 95\% prediction intervals for the first 5 observations in the cars data. Note that I have used the function \texttt{augment()} from the \texttt{broom} package which is really just a wrapper around \texttt{predict()} (and some of the other functions that produce output from fitted linear models). Whereas the \texttt{predict()} function returns a list of results that must be manipulated to produce further output (e.g., to make plots etc.), \texttt{augment()} converts the output to a matrix and combines it with the original data which makes it simpler to manipulate later (e.g., by plotting with \texttt{ggplot()}). It is immediately obvious that the prediction intervals are wider than the corresponding confidence intervals. 
+
+\begin{listing}
+<<predict1, include = TRUE>>=
+## Fitted values
+augment(x = lm2a, interval = 'confidence') %>%
+  select(mpg, .fitted, .lower, .upper) %>%
+  print(n = 5)
+
+augment(x = lm2a, interval = 'prediction') %>%
+  select(mpg, .fitted, .lower, .upper) %>%
+  print(n = 5)
+@ 
+\caption{Fitted (top) and predicted values (bottom) for the first 5 observations in the cars data computed from the model including the main effects of \texttt{cyl} and \texttt{am}.}
+\label{list:predict1}
+\end{listing}
+
+\section{Conclusion}
+
+There is much more that can be said on the topic of linear regression, but this covers the basic information that we will need in our study of generalized linear models. As I mentioned in the introduction, the framework of generalized linear models extends linear regression in two basic ways: 1) by allowing for the response to be other than normally distributed and 2) by allowing a relationship between the mean and the linear predictor that is not linear. However, we need to cover a little more background before we can begin our study of generalized linear models in earnest. In particular, we will take time over the next couple of weeks to look at maximum likelihood estimation -- an alternative for least squares estimation that we can apply to our more general models.
+
+One final note on style. I have included the raw output from \texttt{R} in order that you can see what it looks like and I can identify the different pieces. Please do not include raw output in your own reports. Part of your job as an analyst is to select and format the appropriate output that you want to present to you audience (me, your supervisor, or a future boss or client). 
+
+\bibliographystyle{apalike}
+\bibliography{1_linear_regression}
+
+\newpage
+
+\end{document}
