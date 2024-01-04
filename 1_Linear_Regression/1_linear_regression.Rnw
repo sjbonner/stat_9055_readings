@@ -514,36 +514,37 @@ The assumptions of normality and equal variance are best assessed through plots 
 
 <<diagnostics1, include = TRUE, fig.show="as.is", fig.height=6, fig.width = 6, fig.cap = "Residuals plots for the model of \texttt{mpg} including the main effects of \\texttt{cyl} and \\texttt{am}. These include the normal QQ-plot of the residuals (top left), and plots of the standardized residuals versus \\texttt{cyl} (top right), \\texttt{am} (bottom left), and the fitted values (bottom right)." >>=
 ## Add residuals to the original data
-mycars <- mycars |>
-  mutate(Residuals = residuals(lm2a),
-         StdResiduals = rstandard(lm2a),
-         Fitted = fitted(lm2a))
+mycars <- lm2a |>
+  augment()
 
 ## QQ-plot of residuals
 plot1 <- mycars |>
-  ggplot(aes(sample = Residuals)) +
+  ggplot(aes(sample = .resid)) +
   geom_qq() +
-  geom_qq_line() 
+  geom_qq_line() +
+  xlab("Theoretical Quantiles") +
+  ylab("Residuals")
 
-## Plot of residuals versus cyl
+## Plot of standardized residuals versus cyl
 plot2 <- mycars |>
-  ggplot(aes(x = cyl, y = StdResiduals)) +
+  ggplot(aes(x = cyl, y = .std.resid)) +
   geom_boxplot() +
   geom_hline(yintercept = 0) +
   ylab("Standardized Residuals")
 
 ## Plot of residuals versus cyl
 plot3 <- mycars |>
-  ggplot(aes(x = am, y = StdResiduals)) +
+  ggplot(aes(x = am, y = .std.resid)) +
   geom_boxplot() +
   geom_hline(yintercept = 0) +
   ylab("Standardized Residuals")
 
 ## Plot of residuals versus fitted values
 plot4 <- mycars |>
-  ggplot(aes(x = Fitted, y = StdResiduals)) +
+  ggplot(aes(x = .fitted, y = .std.resid)) +
   geom_point() +
   geom_hline(yintercept = 0) +
+  xlab("Fitted") + 
   ylab("Standardized Residuals")
 
 (plot1 + plot2) / (plot3 + plot4)
@@ -559,22 +560,22 @@ Figure \ref{fig:diagnostics2} contains plots of the Leverage, Cook's distance, D
 ## Add residuals to the original data
 mycars <- mycars |>
   rowid_to_column("Observation") |>
-  mutate(Leverage = hatvalues(lm2a),
-         CooksD = cooks.distance(lm2a),
-         DFfits = dffits(lm2a),
+  mutate(DFfits = dffits(lm2a),
          DFbetas = dfbetas(lm2a))
 
 ## Leverage plot
 plot1 <- mycars |>
-  ggplot(aes(x= Observation, y = Leverage)) +
+  ggplot(aes(x= Observation, y = .hat)) +
   geom_point() +
-  geom_hline(yintercept = 0)
+  geom_hline(yintercept = 0) +
+  ylab("Leverage")
 
 ## Cook's Distance
 plot2 <- mycars |>
-  ggplot(aes(x= Observation, y = CooksD)) +
+  ggplot(aes(x= Observation, y = .cooksd)) +
   geom_point() +
-  geom_hline(yintercept = 0)
+  geom_hline(yintercept = 0) +
+  ylab("Cook's Distance")
 
 ## DFfits
 plot3 <- mycars |>
