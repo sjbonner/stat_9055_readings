@@ -1,15 +1,3 @@
-library(knitr)
-
-opts_chunk$set(echo=FALSE,
-               include=FALSE,
-               message=FALSE,
-               eval=TRUE,
-               cache=FALSE,
-               fig.height=3,
-               fig.width=6,
-               fig.align="center",
-               warning=FALSE)
-
 ## Load packages
 library(tidyverse)
 library(GGally)
