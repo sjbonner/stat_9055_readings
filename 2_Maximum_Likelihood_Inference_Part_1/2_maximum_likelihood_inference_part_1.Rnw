@@ -1,0 +1,494 @@
+\documentclass[12pt]{article}
+
+\usepackage{bm,enumerate,amsmath,lineno,color}
+\usepackage[margin=2.0cm]{geometry}
+\usepackage{fancyhdr}
+
+% Custom commands
+\newcommand{\todi}{\overset{\mathcal{D}}{\to}}
+\newcommand{\topr}{\overset{\mathcal{P}}{\to}}
+\newcommand{\var}{\mbox{Var}}
+
+% Footer
+\pagestyle{fancy}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{1pt}
+\fancyhf{}
+%\rhead{\today, \currenttime}
+\lfoot{Copyright Simon Bonner, University of Western Ontario, 2024}
+\rfoot{Page \thepage}
+
+% Line number fix for equations
+\newcommand*\patchAmsMathEnvironmentForLineno[1]{%
+  \expandafter\let\csname old#1\expandafter\endcsname\csname #1\endcsname
+  \expandafter\let\csname oldend#1\expandafter\endcsname\csname end#1\endcsname
+  \renewenvironment{#1}%
+     {\linenomath\csname old#1\endcsname}%
+     {\csname oldend#1\endcsname\endlinenomath}}%
+\newcommand*\patchBothAmsMathEnvironmentsForLineno[1]{%
+  \patchAmsMathEnvironmentForLineno{#1}%
+  \patchAmsMathEnvironmentForLineno{#1*}}%
+\AtBeginDocument{%
+\patchBothAmsMathEnvironmentsForLineno{equation}%
+\patchBothAmsMathEnvironmentsForLineno{align}%
+\patchBothAmsMathEnvironmentsForLineno{flalign}%
+\patchBothAmsMathEnvironmentsForLineno{alignat}%
+\patchBothAmsMathEnvironmentsForLineno{gather}%
+\patchBothAmsMathEnvironmentsForLineno{multline}%
+}
+
+\begin{document}
+
+\begin{center}
+  \begin{Large}
+    {\bf SS9055B: Generalized Linear Models}\\
+    \medskip
+    Winter 2024
+
+    \medskip
+    {\bf Section 2: Maximum Likelihood Inference Part 1}\\
+
+\end{Large}
+\end{center}
+
+%% Start line numbers
+\linenumbers
+
+\section*{Objectives}
+This section introduce the methods of maximum likelihood inference -- the method of inference we will focus on in this course. By the end of this section you should be able to:
+\begin{enumerate}
+\item construct the likelihood function for a given model,
+\item obtain the maximum likelihood estimators from simple likelihood functions,
+\item construct the asymptotic distribution for these estimators, and
+\item apply the delta method to make inference about functions of parameters.
+\end{enumerate}
+Note that this material is theoretical and will be new to some of you. \textbf{DON'T PANIC!} We will work through examples in class, and you don't need to understand all of the theory to work with the applied material. However, I feel that it is important for you to have some theoretical understanding of the background behind GLM.
+
+\section{Introduction}
+
+In this course we will study some extensions of the linear regression framework. We will begin by looking at the class of generalized linear models (GLMs). The importance of this topic is that inference can be applied in a similar way to all models in the class. One need only show that a model fits the definition of a GLM and then all the tools of the framework become available. We will focus primarily on maximum likelihood inference and will begin with a general review of these methods. We will then describe the application of these tools to abstract GLMs and consider some particular cases including logistic regression for binomial data, Poisson log-linear regression for count data, and models for multinomial data. This section will also help to layout some of the basic notation for the course.
+
+% \section{Review of Linear Regression}
+
+% Generalized linear models can be viewed as extensions of the linear regression model that allow for three things:
+% \begin{enumerate}
+% \item a non-linear relationship between the linear predictor and the mean of the response,
+  
+% \item a non-normal distribution of the errors about the mean, and
+
+% \item a non-constant variance of the response variable (more generally, a relationship between the mean and the variance).
+% \end{enumerate}
+% We will begin with a review of the linear regression model and develop the GLM framework in the next section of the course.
+
+% \subsection{The Linear Regression Model}
+
+% A model in statistics is a set of assumptions that defines a distribution for the data that could be observed -- up to a set of unknown parameters. Suppose that we have observations from $n$ individuals including a continuous response $Y_i$ and the values of $p$ predictors $x_{i1},\ldots,x_{ip}$. The assumptions of the linear regression model are that:
+% \begin{enumerate}
+% \item The values $Y_1,\ldots,Y_n$ are independent given the covariates.
+% \item The mean of $Y_i$ is a linear combination of the associated covariates, $x_{i1},\ldots,x_{ip}$.
+% \item The variance of $Y_i$ is a constant, denoted $\sigma^2$.
+% \item The response values are normally distributed.
+% \end{enumerate}
+% Mathematically, we write that
+% \[
+% Y_i = \beta_0 + \beta_1 x_{i1} + \ldots + \beta_p x_{ip} + \epsilon_i=\bm x_i'\bm \beta + \epsilon_i
+% \]
+% where $\bm x_i=(1,x_{i1},\ldots,x_{ip})'$ is the column vector of predictors for the $i^{th}$ individual (including the intercept), and the errors $\epsilon_1,\ldots,\epsilon_n$ are independent and identically distributed (\textit{iid}) normal random variables with mean zero and common variance $\sigma^2$. The vector of regression coefficients, $\bm \beta=(\beta_0,\ldots,\beta_{p})$, is the parameter of interest and describes the relationship between the response and the covariates. The variance parameter $\sigma^2$ is regarded as a nuisance parameter -- a value that must be estimated but is not of direct interest itself.
+% Alternatively, we can write that
+% \[
+%   Y_i \sim N(\mu_i,\sigma^2)
+% \]
+% with $\mu_i=\bm x_i'\bm \beta$.
+
+% We can also rewrite the model for all observations simultaneously with matrix notation. Either we write
+% \[
+% \bm Y = X \bm \beta + \bm \epsilon
+% \]
+% or we write
+% \[
+% \bm Y \sim N_n(X \bm \beta,\sigma^2 I_n)
+% \]
+% where
+% \begin{itemize}
+% \item $\bm Y=(Y_1,\ldots,Y_n)'$
+% \item $X$ is the $n \times (p+1)$ matrix whose $i^{th}$ row equal to $\bm x_i$
+% \item $\bm \epsilon=(\epsilon_1,\ldots,\epsilon_n)' \sim N_n(\bm 0,\sigma^2 I_n)$.
+% \end{itemize}
+% and $N_n(\cdot,\cdot)$ represents the multivariate normal distribution of dimension $n$. The notation $I_n$ represents the identity matrix of dimension $n$. 
+
+% \subsection{Least Squares Estimation}
+
+% The simplest method for computing point estimates for the linear regression model is least squares. Least squares estimates are computed by minimizing the (squared) distance between the observations and the fitted values. That is, we minimize the residual sum of squares:
+% \[
+% RSS=\sum_{i=1}^n(Y_i - \hat Y_i)^2
+% \]
+% where $\hat Y_i= \bm x_i \hat{\bm \beta}$ is the fitted value for individual $i$. In the case of linear regression the optimization problem can be solved analytically and the resulting estimator is:
+% \[
+% \hat{\bm \beta}= (X'X)^{-1} X'\bm Y.
+% \]
+
+% \subsection{Sampling Distribution}
+
+% To conduct inference for the linear regression model -- most importantly, to compute confidence intervals and conduct hypothesis tests -- we need to know the sampling distribution of this estimator. This can be obtained easily by noting that $\hat{\bm \beta}$ is a \textbf{linear transformation} of the multivariate normal random variable $\bm Y$. Generally, if:
+% \[
+% \bm Z \sim N_n(\bm \mu,\Sigma)
+% \]
+% and $A$ is any $m \times n$ matrix then
+% \[
+%   A \bm Z \sim N_m(A \bm \mu,A \Sigma A').
+% \]
+% Applying this to the LS estimator we find that $\hat{\bm \beta}$ has a $p+1$ dimensional multivariate normal distribution with mean:
+% \[
+% (X'X)^{-1} X'X \bm \beta=\bm \beta
+% \]
+% and variance
+% \[
+% (X'X)^{-1} X' (\sigma^2 I_n) X (X'X)^{-1}=\sigma^2(X'X)^{-1}.
+% \]
+% One immediate consequence of this result is that the LS estimators are unbiased: $E(\hat{\bm \beta})=\bm \beta$. Moreover, if the columns of $X$ are orthogonal the estimators are independent (the covariances are all zero) .
+
+% \subsection{Inference for a Single Parameter}
+
+% Suppose now that we are interested in the value of a single parameter, say $\beta_j$. The properties of the normal distribution tell us that the marginal distribution of any single element from a multivariate normal distribution is itself normal. If
+
+% \[
+% \bm Z \sim N_n(\bm \mu,\Sigma)
+% \]
+% then
+% \[
+% z_j \sim N(\mu_j,\sigma^2_j)
+% \]
+% where $\sigma^2_j=\Sigma_{jj}$ is the $j^{th}$ element on the diagonal of $\Sigma$. This implies that the sampling distribution of $\hat \beta_j$ is
+% \[
+% \hat \beta_j \sim N(\beta_j,\sigma^2_j).
+% \]
+% Unfortunately, this distribution can't be known exactly because it depends on the unknown parameters $\beta_j$ and $\sigma^2$. The dependence on the parameter of interest, $\beta_j$, is not a problem. In fact, it's necessary to make inference. It would be a big problem if the sampling distribution of the parameter did not depend on the parameter itself. However, dependence on the nuisance parameter is a problem. If we knew the value of $\sigma^2$ then we could form a $(1-\alpha)100\%$ confidence interval for $\beta_j$ by noting that:
+% \[
+% P(\beta_j - \sigma_j z_{\alpha/2} < \hat \beta_j < \beta_j + \sigma_j z_{\alpha/2})=(1-\alpha)
+% \]
+% where $z_{\alpha/2}$ represents the upper $\alpha/2$ quantile of a standard normal distribution: i.e., the point such that $P(Z>z_{\alpha/2})=\alpha/2$ when $Z \sim N(0,1)$. Simple manipulation shows that
+% \[
+% P(\hat \beta_j - \sigma_j z_{\alpha/2} < \beta_j < \hat \beta_j + \sigma_j z_{\alpha/2})=(1-\alpha).
+% \]
+% which means that $(\hat \beta_j - \sigma_j z_{\alpha/2},\hat \beta_j + \sigma_j z_{\alpha/2})$ is a $(1-\alpha)100\%$ confidence interval for $\beta_j$. However, since we don't know the value of $\sigma^2_j$ we will have to approximate it by first estimating $\sigma^2$ and then plugging the resulting value into the expression for the variance above. The unbiased estimator of $\sigma^2$ is
+% \[
+% \hat \sigma^2=\frac{\sum_{i=1}^n (Y_i - \hat Y_i)^2}{n-p-1}=\frac{RSS}{n-p-1}.
+% \]
+% The denominator is the degree of freedom of the estimator and the value is often justified by saying that we lose one degree of freedom for each covariate. However it is explained, it is simply the divisor that makes $\hat \sigma^2$ unbiased. We then set $\hat \Sigma=\hat \sigma^2 (X'X)^{-1}$ and $\hat \sigma^2_j=\hat \Sigma_{jj}$.
+
+% Although the estimator is unbiased, replacing $\sigma^2$ with $\hat \sigma^2$ introduces further variation in the endpoints of the confidence interval. To account for this, we must replace the normal quantiles with the quantiles of a $t$-distribution with degrees of freedom given by the estimate of the error variance (we will not worry about showing this mathematically). This new $(1-\alpha)100\%$ confidence interval is
+% \[
+% (\hat \beta_j - \hat \sigma_j t_{\alpha/2,n-p-1},\hat \beta_j + \hat \sigma_j  t_{\alpha/2,n-p-1})
+% \]
+% where $t_{\alpha/2,n-p-1}$ is the value such that if $t \sim t_{n-p-1}$ then $P(t>t_{\alpha/2,n-p-1})=\alpha/2$.
+
+% Suppose now that we want to conduct a hypothesis test with the null hypothesis that $\beta_j$ is equal to some specific value, $\beta^{*}$ (often $\beta^{*}=0$ but this is not necessary). If the null hypothesis $H_0: \beta_j=\beta^{*}$ is true then the sampling distribution becomes
+% \[
+% \hat \beta_j \sim N(\beta^{*},\sigma^2_j)
+% \]
+% and
+% \[
+% t^{\mbox{obs}}=\frac{\hat \beta_j - \beta^{*}}{\hat \sigma_j} \sim t_{n-p-1}
+% \]
+% so that $t^{\mbox{obs}}$ can be used as the basis for a hypothesis test. The $p$-values associated with this test are:
+% \begin{enumerate}
+% \item $2P(t > |t^{\mbox{obs}}|)$ for the two-side test with alternative hypothesis $H_a:\beta_j \neq \beta^*$,
+% \item $P(t > t^{\mbox{obs}})$ for the one-side  test with alternative hypothesis $H_a:\beta_j > \beta^*$, and
+% \item $P(t < t^{\mbox{obs}})$ for the one-side test with alternative hypothesis $H_a:\beta_j < \beta^*$.
+% \end{enumerate}
+% where, again, $t \sim t_{n-p-1}$. Note that when the degrees of freedom of a $t$-distribution is large then the distribution is very close to normal. This means that the unadjusted, normal based test and confidence interval are almost equivalent to the correct, adjusted $t$ based test and confidence interval when the sample size, $n$, is large relative to the number of covariates, $p$.
+
+% \subsection{Inference for Multiple Parameters}
+% \label{sec:ls-testing-2}
+
+% Theory for the multivariate normal distribution can be applied to construct multi-dimensional confidence regions for more than one parameter simultaneously. However, we will focus on simultaneous tests for multiple parameters. Suppose that we wish to test the hypothesis that some subset of $k<p$ coefficients take specified values. In many cases these values will all be zero, but this is not necessary. If we reorder the regression coefficients (including the intercept) then we can assume that the parameters in this subset all come first so that $\bm \beta=(\bm \beta_0',\bm \beta_1')'$, where $\bm \beta_0$ and $\bm \beta_1$ are vectors of length $k$ and $p+1-k$ respectively and the hypotheses of the test are
+% \[
+% H_0:\bm \beta_0=\bm \beta^* \mbox{ vs } H_a:\bm \beta_0\neq\bm \beta^*.
+% \]
+% The alternative indicates that at least one of the coefficients in $\bm \beta_0$ is not equal to the specified value. The results above imply that if the null hypothesis is true then
+% \[
+% \hat{\bm \beta}_0 \sim N_k(\bm \beta^*,\Sigma_{0})
+% \]
+% where $\Sigma_0$ denotes the variance-covariance matrix of $\hat \beta_0$. If $\Sigma_0$ is a positive definite matrix (which it must be if it is a valid variance matrix) then it has a square root $A$ such that $A'A=\Sigma_0$ and $A$ is invertible so that
+% \[
+% A^{-1} (\hat{\bm \beta_0}-\bm \beta^*) \sim N_k(\bm 0,I_k).
+% \]
+% Further, the sum of squares of $k$ independent normal random variables follows the chi-square distribution with $k$ degrees of freedom:
+% \[
+% Z_j \overset{\mbox{iid}}{\sim} N(0,1), j=1,\ldots,k \mbox{ implies } \sum_{i=1}^k Z_j =\bm 1_k' \bm Z \sim \chi^2_k.
+% \]
+% Combining these results we get that
+% \[
+% \bm 1_k' A^{-1}( \hat{\bm \beta_0} - \bm \beta^*)\sim \chi^2_k.
+% \]
+% Much as with the test for a single parameter this would allow us to compute $p$-values for the test if we knew the exact value of $\Sigma_0$ and, hence, $A$. Of course, we don't and these values must be estimated. When we do this, the appropriate test becomes an $F$-test such that the test statistic is
+% \[
+% F=\frac{(RSS_R-RSS_F)/k}{RSS_F/(n-p-1)} \sim F_{k,n-p-1}
+% \]
+% where $RSS_R$ is the sum of squared residuals for the reduced model (with the first $k$ parameter fixed to the values given in the null hypothesis) and $RSS_F$ is the sum of squared residuals for the full model (with no parameters fixed). Note that $F_{df_1,df_2}$ becomes closer and closer to $\chi^2_{df_1}$ as $df_2 \to \infty$. This means that just as in the single parameter case, the unadjusted test which ignores having to estimate $\Sigma_0$ becomes closer and closer to the correct, adjusted test as $n$ gets bigger and $p$ remains fixed. In many cases it is common to ignore the adjustment and simply work with chi-square distribution.
+
+\section{Likelihood, Point Estimates and the MLE}
+
+Least squares estimation is a very good procedure for the linear regression model. In fact, the least squares estimates are the best linear unbiased estimators. This means that if we find another unbiased estimator, $\tilde {\bm \beta}$, which is a linear combination of the response values, meaning that $\tilde{\bm \beta}=M \bm Y$ for some matrix $M$ such that $E(M \bm Y)=\bm \beta$, then $\mbox{Var}(\tilde{\bm \beta})-\mbox{Var}(\hat{\bm \beta})$ is a positive semidefinite matrix. This is the multidimensional equivalent of saying that $\mbox{Var}(\tilde{\beta}_j)-\mbox{Var}(\hat{\beta}_j) \geq 0$ in one dimension and is a result of the Gauss-Markov theorem.
+
+Unfortunately, least squares estimation is not a very good procedure more generally. The more common approach in frequentist statistics, and the one we will consider throughout this entire course, is maximum likelihood estimation.
+
+\subsection{Likelihood Function}
+\label{sec:likelihood-function}
+
+Suppose that our data consist of observations on $n$ univariate random variables, $\bm Y=(Y_1,\ldots,Y_n)'$, having joint density (pmf or pdf) $f(\bm y|\bm \theta)$ dependent on the parameter vector $\bm \theta=(\theta_1,\ldots,\theta_p)'$ of length $p$. I will denote the true value of the parameter by $\bm \theta^*$ and the observed value of $\bm Y$ by $\bm y$. The likelihood function is equal to the joint density of $\bm Y$ viewed as a function of the parameters given the observed data rather than as a function of the data given the parameters:
+\[
+L(\bm \theta| \bm y)=f(\bm y|\bm \theta).
+\]
+The log-likelihood function,
+\[
+l(\bm \theta|\bm y)=\log L(\bm \theta| \bm y)=\log f(\bm y|\bm \theta),
+\]
+provides the same information and is easier to work with for the distributions considered in this course which have an exponential form.
+
+\subsection{Maximum Likelihood Estimator}
+
+The standard point estimator for frequentist inference is the maximum likelihood estimator (MLE) which is commonly defined as the value of $\bm \theta$ which maximizes $L(\bm \theta|\bm y)$:
+\[
+\hat{\bm \theta}=\underset{\bm \theta \in \Theta}{\mbox{argmax}} L(\bm \theta|\bm y)
+\]
+where $\Theta$ represents the parameter space.
+
+For most, if not all, of the models we consider the parameters will be continuous, the likelihood function will be log-concave, and the maximum will occur within the interior of the parameter space (i.e., not on the boundary). In this case, we can compute the MLE by solving the likelihood equations:
+\[
+\frac{d }{d \bm \theta} l(\bm \theta|\bm y)=\left(\frac{\partial l}{\partial\theta_1},\ldots,\frac{\partial l}{\partial \theta_p}\right)=\bm 0.
+\]
+Note that you should always compute the Hessian, the matrix of second derivatives, to confirm that a maximum has been reached. The Hessian of the log-likelihood, $\bm H$, is the $p \times p$ matrix with $j,k$ entry:
+\[
+\frac{\partial^2 }{\partial \theta_j\partial \theta_k} l(\bm \theta|\bm y).
+\]
+The log-likelihood is concave and a maximum is reached if $H$ is negative definite (i.e., if $\bm x' \bm H \bm x<0$ for all $\bm x$). Checking this condition is not always easy.
+
+In one dimension, the MLE is the value of $\theta$ which maximizes the likelihood function given the observed data:
+\[
+\hat{\theta}=\underset{\theta \in \Theta}{\mbox{argmax}} L(\theta|\bm y).
+\]
+This is usually found by solving the likelihood equation,
+\[
+\frac{d }{d \theta} l(\theta|\bm y)=0,
+\]
+and then checking that the second derivative,
+\[
+  \frac{d^2}{d\theta^2}l(\theta|\bm y)|_{\theta=\hat \theta},
+\]
+is less than 0 to ensure that $\hat \theta$ is a maximum.
+
+\subsubsection*{Example}
+
+Suppose that $Y_1,\ldots,Y_n$ are independent normal random variables with unknown mean $\mu$ and variance 1. The density for a single observation is:
+\[
+  f(y_i|\mu)=\frac{1}{\sqrt{\textcolor{red}{2}\pi}}\exp\left(-\frac{(y_i-\mu)^2}{2}\right)
+\]
+and the joint density for all $n$ observations is
+\[
+  f(\bm y|\mu)
+  =\prod_{i=1}^n \frac{1}{\sqrt{2\pi}}\exp\left(-\frac{(y_i-\mu)^2}{2}\right)
+  =(2\pi)^{-n/2}\exp\left(-\frac{1}{2}\sum_{i=1}^n(y_i-\mu)^2\right).
+\]
+The likelihood function is formed simply by viewing $f(\bm y|\mu)$ as a function of $\mu$ not $\bm y$, 
+\[
+  L(\mu|\bm y)=(2\pi)^{-n/2}\exp\left(-\frac{1}{2}\sum_{i=1}^n(y_i-\mu)^2\right),
+\]
+and the log-likelihood function is
+\[
+  l(\mu|\bm y)=\frac{-n}{2} \log(2\pi) -\frac{1}{2}\sum_{i=1}^n(y_i-\mu)^2.
+\]
+Differentiating with respect to $\mu$ we find
+\[
+  \frac{dl}{d\mu}=\sum_{i=1}^n (y_i-\mu)
+\]
+and
+\[
+  \frac{d^2l}{d\mu^2}=-n.
+\]
+Solving $dl/d\mu=0$ yields $\mu=\sum_{i=1}^n y_i/n=\bar y$. Since $\frac{d^2l}{d\mu^2}<0$ for all values of $\mu$ this is the unique maximum. Hence, the MLE is $\hat \mu=\bar y$, the sample mean.
+
+\subsection{Maximum Likelihood Estimation for Linear Regression}
+
+As an example we will compute the maximum likelihood estimator for the linear regression model. The likelihood is
+\[
+L(\bm \beta,\sigma^2|\bm y)
+=f(\bm y|\bm \beta,\sigma^2)
+=\prod_{i=1}^n \frac{1}{\sigma}\phi\left(\frac{y_i - \bm x_i' \bm \beta}{\sigma}\right)
+=\frac{1}{(2\pi\sigma^2)^{n/2}}\exp\left(-\frac{\sum_{i=1}^n(y_i-\bm x_i'\bm \beta)^2}{\sigma^2}\right)
+\]
+where $\phi(\cdot)$ is the pdf of the standard normal distribution and the log-likelihood is
+\[
+l(\bm \beta,\sigma^2|\bm y)= -n\log(\sigma) - \frac{\sum_{i=1}^n(y_i-\bm x_i'\bm \beta)^2}{\sigma^2} + C
+\]
+where $C$ is a constant that depends on neither $\bm \beta$ or $\sigma^2$. It's not important to know the exact value of $C$ because the constant doesn't affect the location of the maximum or the derivatives with respect to the unknown parameters, which is all we will need. Note that for any fixed value of $\sigma^2$ the log-likelihood is maximized when the numerator of the second term,
+\[
+\sum_{i=1}^n(y_i-\bm x_i'\bm \beta)^2,
+\]
+is minimized. This occurs independent of $\sigma^2$ which means that the same value of $\bm \beta$ maximizes the likelihood for all values of $\sigma^2$ and must be the maximum likelihood estimator of $\bm \beta$. Moreover, the expression we are minimizing is simply the residual sum of squares, which shows that the MLE is exactly equal to the least squares estimator. This means that we can apply all of the methods we derived for least squares estimators above with one very minor change. The maximum likelihood estimator of $\sigma^2$ is
+\[
+\hat \sigma^2=\frac{1}{n}\sum_{i=1}^n(y_i-\hat y_i)^2.
+\]
+which is $(n-p-1)/n$ times the unbiased estimator. This estimator is biased, but has a smaller variance than the unbiased estimator. However, this usually makes little difference in practice since $(n-p-1)/n \approx 1$ unless the sample size is very small relative to the number of predictors, which would not be a good idea anyhow.
+
+\subsection{Fisher Information}
+
+An important quantity in maximum likelihood inference is the Fisher information matrix, denoted by $\mathcal I^{(n)}(\bm \theta)$ and often referred to simply as the information. Given the setup in Section \ref{sec:likelihood-function}, the Fisher information matrix evaluated at $\bm \theta$ is the $p \times p$ matrix with $i,j$ entry
+\[
+\mathcal I^{(n)}_{i,j}(\bm \theta)= E_{\theta}\left[\left( \frac{\partial}{\partial \theta_i} \log f(\bm y|\bm \theta) \right)\left( \frac{\partial}{\partial \theta_j} \log f(\bm y|\bm \theta) \right)\right].
+\]
+It is also possible to show that under certain conditions on the density, satisfied by all of the models we will consider, that
+\[
+\mathcal I^{(n)}_{i,j}(\bm \theta)= -E_{\theta}\left( \frac{\partial^2 }{\partial \theta_i \partial \theta_j} \log f(\bm y|\bm \theta) \right).
+\]
+Heuristically, the information measures the average curvature of the likelihood function upon repeated sampling of the data. If the likelihood is very peaked on average then the second derivatives will be large (and negative) and the information will be big. In turn, this means that there is less uncertainty in the value of the parameters. If the curvature is low then the Fisher information will be small and the value of the parameters will be more uncertain.
+
+Although this expression looks somewhat complicated there is an important simplification. If the elements of $\bm Y$ are \emph{iid} then we can rewrite the density as a product of $n$ terms:
+\[
+f(\bm y|\bm \theta)=\prod_{i=1}^n f(y_i|\bm \theta).
+\]
+Note that I am being a little loose with notation by using $f(\cdot|\bm \theta)$ to denote the density of both the vector $\bm Y$ and a single element $\bm Y_i$ and allowing the argument to indicate which variable is being considered. This is very common. Substituting this into the second expression for the information we then find that
+\[
+\mathcal I^{(n)}_{i,j}(\bm \theta)= -E_{\theta}\left( \frac{\partial^2 }{\partial \theta_i \partial \theta_j} \sum_{i=1}^n \log f(y_i|\bm \theta) \right)
+=- \sum_{i=1}^n E_{\theta}\left( \frac{\partial^2 }{\partial \theta_i \partial \theta_j} \log f(y_i|\bm \theta) \right)=n\mathcal I_{i,j}^{(1)}(\bm \theta)
+\]
+where $\mathcal I^{(1)}(\bm \theta)$ represents the information from one observation (since the observations are identically distributed it does not matter which). This shows that the information in a sample of $n$ \emph{iid} observations is equal to $n$ times the information in one observation. 
+
+\subsubsection*{Example}
+Consider the previous example in which $Y_1,\ldots,Y_n$ are iid normal random variables with unknown mean $\mu$ and fixed variance 1. We found that the second derivative of the log-likelihood with respect to $\mu$ was
+\[
+  \frac{d^2l}{d\mu^2}=-n.
+\]
+Hence, the Fisher information is
+\[
+  \mathcal I^{(n)}(\mu)=-E(-n)=n.
+\]
+Note that $I^{(1)}(\mu)=1$ so that $I^{(n)}(\mu)=nI^{(1)}(\mu)$. 
+
+\subsubsection{Convergence in Distribution}
+
+The next section discusses how we approximate the sampling distribution of the MLE, which relies on the concept of convergence in distribution. You may not have seen this before if you have not studied advanced probability. Briefly, convergence in distribution means that as the sample size gets bigger the cumulative distribution function (CDF) of a random variable gets closer and closer to the CDF of the limit at (almost) every point in the sample space. In one dimension, suppose that $X_1,X_2,\ldots$ is a sequence of random variables with cumulative distribution functions $F_1,F_2,\ldots$. We say that the sequence converges in distribution to the random variable $X$ if $F_n(x) \to F(x)$ wherever $F(x)$ is continuous. In practice, this means that $P(X_n \leq x)=F_n(x) \approx F(x)=P(X \leq x)$ so that we can approximate probabilities of events defined in terms of $X_n$ with probabilities for the same events written in terms of $X$ when $n$ is large. This is written in shorthand as $X_n \todi X$. The definition in multiple dimensions is similar so that the sequence of random vectors $\bm X_1, \bm X_2,\ldots$ converges in distribution to the random vector $X$ if the joint CDFs converge pointwise. Again, we write $\bm X_n \todi \bm X$ and approximate probabilities about $\bm X_n$ with probabilities about $\bm X$ when $n$ is large enough.
+
+Whether or not you know it you have all seen an example of convergence in distribution -- the central limit theorem. The version of the central limit theorem that is taught in introductory statistics classes states that if $X_1,\ldots,X_n$ are iid random variables with mean $\mu$ and variance $\sigma^2<\infty$ then the sample mean, $\bar X_n$ is approximately normal regardless of the original distribution provided that $n$ is large enough. Mathematically, we write that
+\[
+  \bar X_n \overset{\cdot}{\sim}N\left(\mu,\frac{\sigma^2}{n}\right)
+\]
+and usually say that $n$ should be greater than 30 for the approximation to be accurate. But what does ``approximately normal'' mean. Approximately normal means that the distribution of $\bar X_n$ converges to a normal distribution. However, we have to be a little careful about what this really mean. In fact, $\bar X_n$ does not converge to a normal distribution because its variance, $\sigma^2/n$, converges to 0 as $n \to \infty$. If we were simply to look at the distribution of $\bar X_n$ as $n \to \infty$ we'd find that it converges to a point mass right at $\mu$. However, if we used this to approximate the distribution of $\bar X$ then we would say that $\mbox{SE}(\bar X)=0$, which is not very useful.
+
+In order to approximate a distribution of $\bar X_n$ we need to multiply by a constant that stabilizes the variance (i.e., find $c$ such that $c \bar X_n$ converges to some constant). The correct constant is $c=\sqrt{n}$ since $\mbox{Var}(\bar X_n)=\sigma^2/n$ and $\mbox{Var}(c \bar X_n)=c^2 \mbox{Var}(\bar X_n)$. However, there is one final wrinkle. Simply multiplying $\bar X_n$ by $\sqrt{n}$ stabilizes the variance, but the mean of $\sqrt n\bar X_n$ converges to $\infty$. To avoid this we first have to subtract the mean, $\mu$. This is what leads us to consider the distribution of $\sqrt{n}(\bar X_n -\mu)$ and to the fact that
+\[
+  \sqrt{n}(\bar X_n -\mu) \overset{\mathcal{D}}{\to}N(0,\sigma^2). 
+\]
+Note that you will be able to understand the material in this course without fully understanding the concept of convergence in distribution, so you do not need to get hung up on this. It is sufficient to know that $\bar X_n \overset{\cdot}{\sim} N(\mu,\sigma^2/n)$, but I think it is helpful to have some idea of what this really means.
+
+\subsection{Approximate Sampling Distribution}
+
+The reason that the Fisher information is important is that it provides an approximation to the variance of the MLE that we will need to computed standard errors, construct confidence intervals, and conduct hypothesis tests. More specifically, the Fisher information is needed to approximate the variance of the sampling distribution of the MLE. We know that the MLE for $\bm \beta$ in the linear regression model must have a normal sampling distribution since it is equal to the least squares estimator which is a linear transformation of the data. This is not true in general, the sampling distribution of the MLE will rarely be exactly normal, but it is possible to show that the MLE is approximately normal under fairly general conditions provided that the sample size is large. By this we mean that the MLE, appropriately scaled so that the variance does not shrink to 0, converges in distribution to a multivariate normal distribution.
+
+
+Suppose that the elements of $\bm Y$ form an \emph{iid} sample of size $n$ from some univariate density so that the likelihood function is:
+\[
+L(\bm \theta|\bm y)=f(\bm y|\bm \theta)=\prod_{i=1}^n f(y_i|\bm \theta).
+\]
+Under regularity conditions, which we will again assume are satisfied, the ML estimator is an asymptotically normal estimator such that
+\[
+\mathcal I ^{(n)}(\bm \theta^*)^{1/2}(\hat{\bm \theta}-\bm \theta^*) \todi N_p\left(0,I_p\right)
+\]
+where $\bm \theta^*$ is the true value of the parameter and $I_p$ is the identity matrix of dimension $p$. Since the observations are assumed to be \emph{iid} we can set $\mathcal I ^{(n)}(\bm \theta^*)=n\mathcal I^{(1)}(\bm \theta^*)$ to obtain
+\[
+\sqrt{n} \mathcal I^{(1)}(\bm \theta^*)^{1/2} (\hat{\bm \theta}-\bm \theta^*) \todi N_p\left(0, I_p\right).
+\]
+If we multiply the left by $\mathcal I^{(1)}(\bm \theta^*)^{-1/2}$ then we find that
+\[
+\sqrt{n} (\hat{\bm \theta}-\bm \theta^*) \todi N_p\left(0,\mathcal I^{(1)}(\bm \theta^*)^{-1}\right).
+\]
+The practical application of this is that if $n$ is large enough then we approximate the sampling distribution of $\hat{\bm \theta}$ with a multivariate normal distribution:
+\[
+\hat {\bm \theta} \overset{\cdot}{\sim}N_p\left(\bm \theta^*,\frac{1}{n} \mathcal I^{(1)}(\bm \theta^*)^{-1}\right).
+\]
+In particular, this implies that the covariance matrix of $\hat{\bm \theta}$ can be approximated by the inverse information matrix,
+\[
+\var(\hat{\bm \theta}) \approx \frac{1}{n} \mathcal I^{(1)}(\bm \theta^*)^{-1}.
+\]
+The approximate standard deviation of $\hat{\theta}_j$ is given by the square root of the $j,j$ element of this matrix. Since we don't know the true parameter values we replace $\bm \theta^*$ with $\hat{\bm \theta}$ to obtain the further approximation:
+\[
+\widehat{\var(\hat{\bm \theta})} \approx \frac{1}{n} \mathcal I^{(1)}(\hat{\bm \theta})^{-1}.
+\]
+The square root of the $j^{th}$ diagonal element of this matrix is called the standard error of $\hat{\theta}_j$. Note that the standard error involves two separate levels of approximation. The first occurs when we approximate the true distribution of the estimator by the normal distribution. The second occurs when we replace the unknown parameters by their estimates.
+
+More generally, we can relax the assumption that the random variables are identically distributed provided that other conditions are satisfied. The exact result in this case is more difficult to state because the information for a single observation is not constant. However, the final result is similar. Under regularity conditions and given that $n$ is large enough, we can approximate the sampling distribution of $\hat {\bm \theta}$ by:
+\[
+\hat {\bm \theta} \overset{\cdot}{\sim}N_p\left(\bm \theta^*,\mathcal I^{(n)}(\bm \theta^*)^{-1}\right)
+\]
+We can then approximate the variance matrix with
+\[
+\widehat{\var(\hat{\bm \theta})} \approx \mathcal I^{(n)}(\hat{\bm \theta})^{-1}.
+\]
+and the square root of the $j^{th}$ diagonal element of this matrix is again called the standard error of $\hat{\theta_j}$.
+
+\subsubsection*{Example}
+
+Considering the earlier example, we found that $I^{(n)}(\mu)=n$. Hence, $\mbox{Var}(\hat \mu)=1/n$ and the approximate standard error of $\hat \mu$ is $\mbox{SE}(\hat \mu)=1/\sqrt{n}$.
+
+Note that this should not have been a surprise. Recall that the MLE is the sample mean, $\hat \mu=\bar y $. In this case $\hat \mu$ is exactly normal and the standard deviation of $\hat \mu$ is exactly $1/\sqrt{n}$. 
+
+\section{Further Considerations}
+
+\subsection{Performance of the MLE}
+The performance of different estimators for the same parameters are generally compared in terms of their bias, standard error, and mean-squared error (equal to the square of the bias plus the square of the standard error). The MLE is not necessarily unbiased and does not have the smallest variance of all possible estimators, in general. However, use of the MLE is supported by asymptotic arguments -- i.e., by its performance when the sample size is large. Under the same regularity conditions that provide asymptotic normality of MLEs, the MLE is both consistent and asymptotically efficient. Consistency means that the MLE converges in probability to the true parameter value, denoted by $\hat {\bm \theta} \topr \bm \theta^*$. Practically speaking, this means the estimator is likely to be very close the true parameter value when $n$ is large. Asymptotic efficiency means that the variance of the asymptotic distribution of the MLE is as small as possible for any asymptotically normal estimator. This essentially means that the MLE will have the smallest variance of all aysmptotically unbiased estimators. Combined, these mean that the MLE is guaranteed to be the best estimator when the sample size is very, very large -- and are likely to be good estimators when the sample size is reasonably large. This is why maximum likelihood estimation is applied in so many problems. 
+
+
+\subsection{Delta Method}
+
+Finally, we will look at one more result called the delta method. Sometimes we will interested in making inference about some function of the parameters in a model instead of the parameters themselves. To do this we need to understand the sampling distribution of a function of the MLE. The delta method provides a way to do because the MLE has an approximate normal distribution. Although statisticians give it a special name, the delta method is nothing more than an application of first order Taylor series expansion.
+
+Strictly speaking, suppose that $\bm X_n$ is a random vector of length $p$ which has an asymptotically normal distribution
+\[
+\sqrt{n}(\bm X_n - \bm \mu) \todi N_p(0,\Sigma)
+\]
+for some mean vector $\bm \mu$ of length $p$ and some variance matrix, $\Sigma$, of dimension $p \times p$. Let $g(\bm x)$ be a differentiable, vector valued function mapping $\Re^n$ to $\Re^m$ and define $\bm Y_n=g(\bm X_n)$. Then:
+\[
+\sqrt{n}(\bm Y_n - g(\bm \mu)) \todi N\left(0, J(\bm \mu) \Sigma J(\bm \mu)'\right)
+\]
+where $J(\bm \mu)$ is the Jacobian -- the matrix of partial derivatives of $g(\bm x)$ evaluated at $\bm \mu$ such that
+\[
+J_{i,j}=\left.\frac{\partial g_i}{\partial x_j}\right|_{\bm x=\bm \mu}
+\]
+where $g_i(\bm x)$ represents the $i^{th}$ element of the output of $g(\bm x)$. Applying this to the MLE for $\bm \theta$ and assuming that the observations are \emph{iid} implies that
+\[
+\sqrt{n}(g(\hat{\bm \theta}) - g(\bm \theta^*)) \todi N(0,J(\bm \theta^*) \mathcal I^{-1}(\bm \theta^*) J(\bm \theta^*)').
+\]
+Since the true value of the parameters, $\bm \theta^*$, is unknown, we must replace it with the MLE in practice.
+
+Practically speaking, this means that we can also approximate the sampling distribution of $g(\hat{\bm \theta})$ by a normal distribution. Specifically,
+\[
+g(\hat{\bm \theta}) \overset{\cdot}{\sim} N\left(g(\bm \theta^*),\frac{J(\hat {\bm \theta}) \mathcal I^{-1}(\hat {\bm \theta}) J(\hat {\bm \theta})'}{n}\right).
+\]
+We can then use this result to obtain approximate hypothesis tests and confidence regions for $\bm \theta$ without having to recompute the distribution of $g(\bm \theta)$ directly. If $\bm \theta$ is univariate, $p=1$, then we get the simpler result
+\[
+\sqrt{n}(g(\hat \theta) - g(\theta^*)) \todi N\left(0, \frac{[g'(\theta^*)]^2}{ \mathcal I^{(1)}(\theta^*)}\right)
+\]
+which gives the approximation
+\[
+g(\hat \theta) \overset{\cdot}{\sim} N\left(g(\theta^*), \frac{[g'(\hat \theta)]^2}{ n \mathcal I^{(1)}(\hat \theta)}\right)
+\]
+when $\theta^*$ is replaced by the MLE. This implies that the standard error of $g(\hat \theta)$ is approximately equal to $|g'(\hat \theta)|\left/\sqrt{n \mathcal I^{(1)}(\hat \theta)}\right.$.
+
+\subsubsection*{Example}
+
+Consider the previous example again and suppose that we were actually interested in estimating the value $e^\mu$. If we let $g(x)=e^x$ then $g'(x)=e^x$. Applying the delta method we get that
+\[
+  e^{\bar y} \overset{\cdot}{\sim} N\left(e^\mu,\frac{e^{2\hat \mu}}{n}\right).
+\]
+Hence, the standard error of $e^{\bar y}$ is $SE(e^{\bar y})=e^{\bar y}/\sqrt{n}$. 
+
+\section{Summary}
+
+In this course we fill focus primarily on maximum likelihood methods to estimate parameters and conduct inference by computing confidence intervals and completing hypothesis tests. In the special case of the linear regression model maximum likelihood inference coincides with least squares inference. As a result, the maximum likelihood estimator has an exact normal distribution form which confidence intervals are easily computed and the sampling distribution of test statistics are simple to derive. While this is not true more generally, the models we will consider all satisfy the regularity conditions so that the sampling distribution of the estimator is approximately normal and the same methods can be applied to obtain approximate confidence intervals and perform approximate hypothesis tests. In the next section we will consider some further methods of inference based on the likelihood before we consider the framework of generalized linear models. 
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
