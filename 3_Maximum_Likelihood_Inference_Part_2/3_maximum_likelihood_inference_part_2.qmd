@@ -28,6 +28,7 @@ execute:
 ---
 
 ```{r}
+#| purl: false
 knitr::opts_chunk$set(digits = 3)
 ```
 
