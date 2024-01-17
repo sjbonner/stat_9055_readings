@@ -47,3 +47,14 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Project file
+*.Rproj
+
+# LaTeX files
+*.tex
+*.fff
+*.flol
+*.log
+*.synctex.gz
+*.ttt
