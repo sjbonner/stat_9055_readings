@@ -1,61 +1,42 @@
-\documentclass[12pt]{article}
+---
+title: "SS9055B: Generalized Linear Models"
+subtitle: "Section 3: Maximum Likelihood Inference Part 2"
+knitr: 
+  opts_chunk:
+    fig.align: center
+format:
+  pdf:
+    mathspec: true
+    include-in-header:
+      - text: |
+          \usepackage{bm,enumerate,amsmath,lineno,graphicx,color}
 
-\usepackage{bm,enumerate,amsmath,lineno,graphicx,color}
-\usepackage[margin=2.0cm]{geometry}
-\usepackage{fancyhdr}
-\usepackage[ddmmyyyy,hhmmss]{datetime}
+          % Header and Footer
+          \usepackage[footsepline=true]{scrlayer-scrpage}
+          \lofoot{Copyright Simon Bonner, University of Western Ontario, 2024}
+          \rofoot{Page \thepage}
 
-% Custom commands
-\newcommand{\todi}{\overset{\mathcal{D}}{\to}}
-\newcommand{\topr}{\overset{\mathcal{P}}{\to}}
-\newcommand{\var}{\mbox{Var}}
+          % Custom commands
+          \newcommand{\todi}{\overset{\mathcal{D}}{\to}}
+          \newcommand{\topr}{\overset{\mathcal{P}}{\to}}
+          \newcommand{\var}{\mbox{Var}}
+execute: 
+  eval: true
+  echo: false
+  message: false
+  warning: false
+---
 
-% Footer
-\pagestyle{fancy}
-\renewcommand{\headrulewidth}{0pt}
-\renewcommand{\footrulewidth}{1pt}
-\fancyhf{}
-\rhead{}
-\lhead{}
-\lfoot{Copyright Simon Bonner, University of Western Ontario, 2024}
-\rfoot{Page \thepage}
+```{r}
+knitr::opts_chunk$set(digits = 3)
+```
 
-% Line number fix for equations
-\newcommand*\patchAmsMathEnvironmentForLineno[1]{%
-  \expandafter\let\csname old#1\expandafter\endcsname\csname #1\endcsname
-  \expandafter\let\csname oldend#1\expandafter\endcsname\csname end#1\endcsname
-  \renewenvironment{#1}%
-     {\linenomath\csname old#1\endcsname}%
-     {\csname oldend#1\endcsname\endlinenomath}}%
-\newcommand*\patchBothAmsMathEnvironmentsForLineno[1]{%
-  \patchAmsMathEnvironmentForLineno{#1}%
-  \patchAmsMathEnvironmentForLineno{#1*}}%
-\AtBeginDocument{%
-\patchBothAmsMathEnvironmentsForLineno{equation}%
-\patchBothAmsMathEnvironmentsForLineno{align}%
-\patchBothAmsMathEnvironmentsForLineno{flalign}%
-\patchBothAmsMathEnvironmentsForLineno{alignat}%
-\patchBothAmsMathEnvironmentsForLineno{gather}%
-\patchBothAmsMathEnvironmentsForLineno{multline}%
-}
 
-\begin{document}
-
-\begin{center}
-  \begin{Large}
-    {\bf SS9055B: Generalized Linear Models}\\
-
-    \medskip
-    {\bf Section 3: Maximum Likelihood Inference Part 2}\\
-
-    %{\sc I Introduction}
-\end{Large}
-\end{center}
-
-%% Start line numbers
 \linenumbers
 
-\section*{Objectives}
+\thispagestyle{scrheadings}
+
+# Objectives
 This section continues the discussion of the methods of maximum likelihood inference. By the end of this section you should be able to:
 \begin{enumerate}
 \item derive Wald, likelihood ratio, and score test statistics for simple models, and
@@ -63,160 +44,160 @@ This section continues the discussion of the methods of maximum likelihood infer
 \end{enumerate}
 Once again, this material is theoretical and may be new to most of you. \textbf{IT'S STILL NOT TIME TO PANIC!} We will work through examples in class.
 
-\section{Introduction}
+# Introduction
 
 In the previous section of notes we derived the approximate sampling distribution for maximum likelihood estimators. For a model with a one dimensional parameter, $\theta$, and assuming the data are \emph{iid}, we found that
-\[
+$$
 \sqrt{n} (\hat\theta-\theta^*) \todi N\left(0,\mathcal I^{(1)}(\theta^*)^{-1}\right)
-\]
+$$
 where $\hat \theta$ is the MLE, $\theta^*$ is the true parameter value, and $\mathcal I^{(1)}(\theta^*)$ is the information in one observation evaluated at the true parameter. In practice, this allows us to approximate the sampling distribution of $\hat \theta$ as
-\[
+$$
 \hat {\theta} \overset{\cdot}{\sim}N\left(\theta^*,\frac{1}{n \mathcal I^{(1)}(\hat \theta)}\right).
-\]
+$$
 The equivalent expressions in $p$ dimensions are
-\[
+$$
 \sqrt{n} (\hat{\bm \theta}-\bm \theta^*) \todi N_p\left(0,\mathcal I^{(1)}(\bm \theta^*)^{-1}\right)
-\]
+$$
 and
-\[
+$$
 \hat {\bm \theta} \overset{\cdot}{\sim}N_p\left(\bm \theta^*,\frac{1}{n} \mathcal I^{(1)}(\hat{\bm \theta})^{-1}\right).
-\]
+$$
 Notice that we replace the true value of the parameter with the estimate in the expression for the asymptotic variance, but not the mean. In fact, if you wanted to approximate the sampling distribution of the MLE then you would want to replace both. However, we are going to need the true parameter to appear in the approximate distribution in order to construct test statistics and confidence intervals, which is what we will do now.
 
-\section{Review}
+# Review
 \label{sec:review}
 
 The methods for obtaining tests statistics and inverting them to construct confidence sets may seem new at first, but I am certain that you have all seen versions of these tests and confidence intervals before. Recall that the least squares estimators of the coefficients in a linear regression model exactly follow a normal distribution if the residual variance, $\sigma^2$, is known. In particular
-\[
+$$
 \hat \beta_j \sim N(\beta^{*},\sigma^2_j).
-\]
+$$
 where $\sigma^2_j$ is the $j-th$ entry along the diagonal of the variance covariance matrix, $\Sigma=\sigma^2(X'X)^{-1}$. The hypotheses
-\[
+$$
 H_0:\beta_j=0 \mbox{ versus } H_a:\beta_j\neq 0
-\]
+$$
 can then be compared with the $z$-statistic
-\[
+$$
 z=\frac{\hat \beta_j}{\sigma_j}
-\]
+$$
 which has a standard normal distribution if $H_0$ is true. The $p$-value for the test is
-\[
+$$
 p=2P(Z > |z|)
-\]
+$$
 where $Z \sim N(0,1)$. If we set a significance level, $\alpha$, then we reject $H_0$ if $|z| > z_{\alpha/2}$ where $P(Z>z_{\alpha/2})=\alpha/2$.
 
 To obtain a confidence interval for $\beta_j$, note that we fail to reject $H_0$ if $|\hat \beta_j|<\sigma_j z_{\alpha/2}$ or equivalently if $\hat \beta_j-\sigma_j z_{\alpha/2}<0<\hat \beta_j+\sigma_j z_{\alpha/2}$. This yields the $(1-\alpha)100\%$ confidence interval $(\hat \beta_j-\sigma_j z_{\alpha/2},\hat \beta_j+\sigma_j z_{\alpha/2})$. The set of estimates for which we fail to reject (accept) $H_0$, $A=\{\hat \beta: |\hat \beta-0|<\sigma_j z_{\alpha/2}\}$ is called the acceptance region of the test and the process of constructing the confidence interval from $A$ is called inverting the test statistic. 
 
-\section{Likelihood Based Hypothesis Tests}
+# Likelihood Based Hypothesis Tests
 
 To make the discussion general I will consider that the data consist of a random sample from some distribution dependent on a vector of parameters, $\bm \theta$, of length $p$. I will then consider testing the hypothesis that some subset of $k<p$ of the parameters are equal to 0. Notationally, I will assume that the parameters are ordered so that we can divide the vector of parameters into two pieces, $\bm \theta=(\bm \theta_0',\bm \theta_1')'$, where $\bm \theta_0$ is of length $k$ and contains the parameters of interest and $\bm \theta_1$ is of length $p-k$ and contains the remaining parameters. The hypotheses we wish to test are then
-\[
+$$
 H_0: \bm \theta_0=\bm 0 \mbox{ versus } H_a:\bm \theta_0 \neq \bm 0.
-\]
+$$
 The null hypothesis indicates that all elements of $\bm \theta_0$ are equal to 0 and the alternative indicates that at least one of the coefficients in $\bm \theta_0$ is not equal 0.
 
-It may seem restrictive to assume that the null hypothesis sets the parameters of interest equal to 0. However, there are two reasons for doing this. First, this is the test that we will be interested in most often in the class because we will usually be testing whether or not some predictor(s) are important in the model which is equivalent to testing whether their coefficients should be 0. Second, we can usually obtain a test of this form by reparametrizing the distribution. Suppose that we had a normal sample and wished to test that the hypothesis that $\mu=42$. An equivalent test is to define $\mu=\theta + 42$ and then test whether $\theta=0$. 
+It may seem restrictive to assume that the null hypothesis sets the parameters of interest equal to 0. However, there are two reasons for doing this. First, this is the test that we will be interested in most often in the class because we will usually be testing whether or not some predictor(s) are important in the model which is equivalent to testing whether their coefficients should be 0. Second, we can usually obtain a test of this form by reparameterizing the distribution. Suppose that we had a normal sample and wished to test that the hypothesis that $\mu=42$. An equivalent test is to define $\mu=\theta + 42$ and then test whether $\theta=0$. 
 
-\subsection{Wald Test}
+## Wald Test
 
-The simplest tests for maximum likelihood inference are based on directly computing probabilites from the asymptotic normal distribution of the MLE. If $k=1$ then the hypotheses become
-\[
+The simplest tests for maximum likelihood inference are based on directly computing probabilities from the asymptotic normal distribution of the MLE. If $k=1$ then the hypotheses become
+$$
 H_0:\theta=0 \mbox{ versus } H_a:\theta \neq 0.
-\]
+$$
 The Wald test in this case ends up being exactly equivalent to a standard $z$-test using the estimated mean and standard error of the parameter of interest and ignoring the correction for the estimation of $\sigma^2$ which leads to the $t$-test, exactly as in Section \ref{sec:review}. Explicitly, the test statistic is
-\[
+$$
   z=\hat{\theta}/\mbox{SE}(\hat{\theta})
-\]
+$$
 and the $p$-value is
-\[
+$$
   p=P(Z < -|z| \mbox{ or } Z>|z|)=2 P(Z>|z|)
-\]
+$$
 where $Z \sim N(0,1)$. Equivalently, since the square of a standard normal random variable is a chi-square random variable with one degree of freedom we can compute the p-value as
-\[
+$$
 p = P(Z^2>z^2)=P(X > z^2)
-\]
+$$
 where $X\sim \chi^2_1$. 
 
 More generally, when $k>1$ we can construct a test statistic that has an approximate chi-squared distribution with $k$ degrees of freedom if the null hypothesis is true. Explicitly, the Wald test statistic for testing the hypotheses
-\[
+$$
 H_0: \bm \theta_0=\bm 0 \mbox{ versus } H_a:\bm \theta_0 \neq \bm 0
-\]
+$$
 is
-\[
+$$
 W=\hat{\bm \theta}_0' I^{(n)}_{[1:k,1:k]}\hat{\bm \theta}) \hat{\bm \theta}_0
-\]
+$$
 where $I^{(n)}_{[1:k,1:k]}(\hat{\bm \theta})$ represents the $k \times k$ submatrix of the information matrix associated with $\bm \theta_0$. Under the regularity conditions for maximum likelihood inference, $W$ has an approximate chi-square distribution with $k$ degrees of freedom, $W \todi \chi^2_k$. The $p$-value is then computed as $p \approx P(X > W)$ where $X \sim \chi^2_k$.
 
 Note that once again we have replaced the unknown true parameter value with the point estimate, $\hat{\bm \theta}$, in the computation of the information matrix. Tests based on $W$ and its approximate chi-square distribution are called Wald tests. 
 
-\subsection{Likelihood Ratio Tests}
+## Likelihood Ratio Tests 
 
 The second class of tests based on the asymptotic distribution of $\hat{\bm \theta}$ is the likelihood ratio test (LRT). Heuristically, the LRT compares the likelihood of the data under both the null and alternative hypotheses. It is always possible to make the likelihood bigger under the alternative hypothesis because the likelihood will never be maximized exactly when $\bm \theta_0=\bm 0$ simply because of random variation in the sample. However, we might be convinced to believe that the null hypothesis is true if $\hat{\bm \theta}_0$ is close to $\bm 0$. The LRT measures this difference by comparing the maximum of the likelihood under the null and alternative hypotheses is small.
 
 First we consider the likelihood when the null hypothesis is true. If the null hypothesis is true then we have to set $\bm \theta_0=\bm 0$, and so the likelihood is maximized by varying $\bm \theta_1$ alone. Let $\hat{\bm \theta}_0$ denote the point at which the likelihood is maximized when $\bm \theta_0=\bm 0$  so that
-\[
+$$
   \max_{\bm \theta_1} L((\bm 0,\bm \theta_1)|\bm y)=L(\hat{\bm \theta}_0|\bm y).
-\]
+$$
 Next we consider the likelihood under the alternative hypothesis. The alternative hypothesis imposes no restrictions on the parameter values and so the likelihood is maximized by the full MLE,
-\[
+$$
   \max_{\bm \theta} L(\bm \theta|\bm y)=L(\hat {\bm \theta}|\bm y).
-\]
+$$
 The likelihood ratio compares these two values and is defined as
-\[
+$$
 \Lambda= \frac{\max_{\bm \theta_1} L((\bm 0,\bm \theta_1)|\bm y)} {\max_{\bm \theta} L(\bm \theta|\bm y)}=\frac{L(\hat{\bm \theta}^\dagger_0|\bm y)}{L(\hat{\bm \theta}|\bm y)}.
-\]
+$$
 The distribution of this statistic is hard to work with directly; however, under the same regularity conditions that imply asymptotic normality of the MLE, which are satisfied by all of the models we will consider, the statistic
-\[
+$$
   G^2=-2 \log \Lambda=2[\log L(\hat{\bm \theta}|\bm y)- \log L(\hat{\bm \theta}^\dagger|\bm y)]
-\]
+$$
 has an asymptotic chi-squared distribution with $k$ degrees of freedom. This is called the likelihood ratio test statistics (even though its actually equal to -2 times the log of the likelihood ratio). The $p$-value for the likelihood ratio test can then be computed as $p\approx P(X>G^2)$ where $X \sim \chi^2_k$.
 
-\subsection{Comparison}
+## Comparison
 
 Both the Wald and likelihood ratio tests can be applied to test the same hypotheses, and so it is natural to ask which should be used. In general, the LRT is more powerful than the Wald test meaning that it is more likely to reject the null hypothesis given that the alternative hypothesis is true. The LRT statistic also converges to the asymptotic chi-square distribution more quickly meaning that $p$-values from the LRT will be more accurate. However, the Wald test statistic is generally easier to compute, though we will see that the LRT has a simple general form for GLM. You will see both Wald tests and the LRT on a regular basis in this class and beyond.
 
-\subsection{Score Tests}
+## Score Tests
 
 There is one other common test based on maximum likelihood theory which is the score test. Score tests assess the distance between the MLE and the value of the parameter specified by the null hypothesis by comparing the gradient of the likelihood at these points. The advantage of these tests is that we only have to consider what happens under the null hypothesis because we know that the gradient is 0 at the maximum (provide the likelihood is regular). This can be very convenient if the likelihood is complicated or if $k$ is large so that the full likelihood has much higher dimension than the likelihood under the null hypothesis. However, Wald and likelihood ratio tests are easily conducted for the types of models we will consider and so we will not encounter score tests.
 
-\subsection{Example}
+## Example
 
 Suppose that $Y_1,\ldots,Y_n$ are independent and identically distributed exponential random variables with mean $\mu$ and we wish to test the hypotheses
-\[
+$$
   H_0: \mu = 1 \mbox{ versus } H_a: \mu \neq 1.
-\]
+$$
 The density of the exponential distribution is
-\[
+$$
   f(x;\mu)=\frac{1}{\mu}e^{-x/\mu},\quad x >0
-\]
+$$
 and so the likelihood is
-\[
+$$
   L(\mu;\bm x)=\frac{1}{\mu^n}e^{-n\bar x/\mu}.
-\]
+$$
 Equivalently, we can define $\theta=\mu-1$ so that $Y_1,\ldots,Y_n \sim Exp(\theta + 1)$ and test the hypotheses
-\[
+$$
   H_0: \theta = 0 \mbox{ versus } H_a: \theta \neq 0.
-\]
+$$
 The density of the exponential distribution in terms of the new parametrization is
-\[
+$$
   f(x;\theta)=\frac{1}{\theta+1}e^{-x/(\theta + 1)},\quad x >0
-\]
+$$
 and so the likelihood is
-\[
+$$
   L(\mu;\bm x)=\frac{1}{(\theta + 1)^n}e^{-n\bar x/(\theta + 1)}.
-\]
+$$
 
 It's straightforward to show that the MLE of $\mu$ is $\hat \mu=\bar X$ and so $\hat \theta=\bar X - 1$ (a property called invariance). Moreover, applying the CLT we have that
-\[
+$$
   \bar X \overset{\cdot}{\sim}N\left(\mu,\frac{\mu^2}{n}\right)
-\]
+$$
 so that
-\[
+$$
   \hat \theta \overset{\cdot}{\sim} N\left(\mu-1,\frac{\mu^2}{n}\right). 
-\]
+$$
 The Wald test statistic is
-\[
+$$
   W=\left(\frac{\hat \theta}{SE(\hat \theta)}\right)^2=\left(\frac{\bar x - 1}{\bar x/\sqrt{n}}\right)^2=n\left(1-\frac{1}{\bar x}\right)^2
-\]
+$$
 and the $p$-value is $P(\chi^2_1 > W)$.
 the likelihood ratio is
 \begin{align*}
@@ -227,114 +208,87 @@ the likelihood ratio is
   &=\left(\frac{\bar x}{\mu}\right)^n\exp\left[-n\left(\frac{\bar x}{\mu} -1 \right)\right].\\
 \end{align*}
 The likelihood ratio test statistic is
-\[
+$$
   G^2=-2\log \Lambda =-2n\left[\log\left(\frac{\bar x}{\mu}\right) + \left(1-\frac{\bar x}{\mu}\right)\right].
-\]
+$$
 and the $p$-value is $P(\chi^2_1 > G^2)$. 
 
-\section{Likelihood Based Confidence Intervals}
+# Likelihood Based Confidence Intervals
 
 Anytime we have a test statistic whose (approximate) distribution is known under the null hypotheis we can construct an (approximate) confidence set through the process of inversion. Given the null hypothesis $H_0: \bm \theta_0=\bm \theta_0^\dagger$ and a level of significance, $\alpha$, we can partition the sample space into two regions. The rejection region, $R(\bm \theta_0^\dagger)$, is the set of data points for which $H_0$ would be rejected at the $\alpha$ level of s0ignificance. The complement is the acceptance region, $A(\bm \theta_0^\dagger)=R(\bm \theta_0^\dagger)^C$, containing the data points for which $H_0$ would not be rejected (i.e., accepted). The process of inversion involves identifying the set of $\bm \theta_0^\dagger$ for which the acceptance region contains the observed test statistic. 
 
 The Wald and likelihood ratio tests both have rejection regions of the form:
-\[
+$$
 R(\bm \theta_0^\dagger)=\{\bm y: T(\bm y,\bm \theta_0^\dagger)>\chi^2_{k,\alpha}\}
-\]
+$$
 where $T(\bm y,\bm \theta_0^\dagger)$ is the test statistic computed given the observed data and the null hypothesis, $k$ is the appropriate degrees of freedom, and $\chi^2_{k,\alpha}$ is the critical point such that $P(\chi^2_k>\chi^2_{k,\alpha})=\alpha$. The corresponding acceptance region is:
-\[
+$$
 A(\bm \theta_0^\dagger)=\{\bm y: T(\bm y,\bm \theta_0^\dagger)<\chi^2_{k,\alpha}\}.
-\]
+$$
 Inverting this region gives the $(1-\alpha)100\%$ confidence set:
-\[
+$$
 C(\bm y)=\{\bm \theta_0: T(\bm y,\bm \theta_0)<\chi^2_{k,\alpha}\}.
-\]
+$$
 Note that inversion is not guaranteed to produce a confidence set that comprises a single interval for all models However, this method will always produce an interval estimate for the three tests we have considered because the $\chi^2$ distribution is unimodal.
 
-\subsection{Example}
+## Example
+
+```{r}
+## Load packages
+library(tidyverse)
+library(latex2exp)
+
+## Set parameters
+mu <- 1
+theta <- mu - 1
+
+n <- 25
+xbar <- .95
+
+## Compute LRT statistic
+
+lrt <- function(mu, n, xbar,c = 0){
+  - 2 * n * (log(xbar/mu) + xbar *(mu - xbar)/(mu * xbar)) - c
+}
+
+lrt_ci <- c(uniroot(lrt, c(.5, xbar), n = n, xbar = xbar, c= qchisq(.95,1)) $ root,
+            uniroot(lrt, c(xbar, 1.5), n = n, xbar = xbar, c= qchisq(.95,1)) $ root)
+
+```
 
 Consider the previous example. According to the CLT
-\[
+$$
   \hat \mu = \bar X \overset{\cdot}{\sim} N\left(\mu,\frac{\mu^2}{n}\right).
-\]
+$$
 The $(1-\alpha)100\%$ Wald confidence interval for $\mu$ is then given by
-\[
+$$
   \bar x \pm z_{\alpha/2}\frac{\bar X}{\sqrt{n}}.
-\]
+$$
 
 To find the $(1-\alpha)100\%$ confidence interval based on the LRT we first need to in invert the test statistic, $G^2$, found in the previous example. That is, we need to identify the values of $\mu^\dagger$ for which $G^2 < \chi^2_{1,\alpha}$. Unfortunately, this equation cannot be solved by hand and the endpoints must be computed numerically.
 
 As an example, suppose that $n=25$ and $\bar x=.95$. The endpoints of the 95\% Wald confidence interval for $\mu$ would have endpoints
-\[
+$$
   .95 - 1.96(.95/\sqrt{25})=.578 \mbox{ and } .95 + 1.96(.95/\sqrt{25})=1.322.
-\]
-The plot in Figure \ref{fig:example1} show the value of the likelihood ratio test statistic as a function of $\mu$. The horizontal line represents the value of $\chi^2_{1,.05}=3.841$. Inverting the test statistic to construct the confidence interval is equivalent to finding all of the value of $\mu$ for which the test statistic is below this point. This is done by finding the two points where the lines cross, which are $.658$ and $1.445$. Hence, the 95\% Wald confidence interval for $\mu$ is (.578,1.322) and the 95\% likelihood ratio confidence interval is (.658,1.445). 
+$$
+The plot in @fig-example1 show the value of the likelihood ratio test statistic as a function of $\mu$. The horizontal line represents the value of $\chi^2_{1,.05}=3.841$. Inverting the test statistic to construct the confidence interval is equivalent to finding all of the value of $\mu$ for which the test statistic is below this point. This is done by finding the two points where the lines cross, which are `r lrt_ci[1]` and `r lrt_ci[2]`. Hence, the 95\% Wald confidence interval for $\mu$ is (.578,1.322) and the 95\% likelihood ratio confidence interval is (.658,1.445). 
 
-\begin{figure}
-  \centering
-  \includegraphics{example_figure}
-  \caption{Likelihood ratio test statistic for a random sample of size 25 from an exponential distribution when $\bar x=.95$. The vertical dashed line represents the MLE (i.e., $\bar x$). The horizontal grey line represents the value $\chi^2_{1,.05}=3.841$.}
-  \label{fig:example1}
-\end{figure}
+```{r}
+#| fig-cap: Likelihood ratio test statistic for a random sample of size 25 from an exponential distribution when $\bar x=.95$. The vertical dashed line represents the MLE (i.e., $\bar x$). The horizontal grey line represents the value $\chi^2_{1,.05}=3.841$.
+#| label: fig-example1
+
+## Plot LRT vs theta
+mydat <- tibble(mu = seq(.5,1.5,length = 100)) %>%
+  mutate(G = lrt(mu, n, xbar))
+
+mydat %>%
+  ggplot(aes(x = mu, y= G)) +
+  geom_line() +
+  geom_hline(yintercept = qchisq(.95,1), colour = "grey") +
+  geom_vline(xintercept = xbar, lty = 2) + 
+  ylim(c(NA, qchisq(.95,1) * 1.1)) +
+  xlab(TeX("$\\mu$"))+
+  ylab(TeX("$G^2$"))
+```
 
 
-
-% \section{Exercises}
-
-% \begin{enumerate}
-% \item Binomial Distribution
-
-% Suppose that $Y_1,\ldots,Y_n$ are independent Bernoulli random variables with probability of success $p$. 
-% \begin{enumerate}[a)]
-% \item Construct the likelihood equation.
-% \item Derive the maximum likelihood estimator, $\hat p$.
-% \item Obtain the asymptotic distribution of $\hat p$.
-% \item Determine the standard error of $\hat p$.
-% \item Construct the Wald test statistic for the hypotheses
-%   \[
-%   H_0:p=p_0 \mbox{ vs } H_a:p \neq p_0
-%   \]
-%   and describe its asymptotic distribution.
-% \item Invert the Wald test statistic to obtain an approximate confidence interval for $p$. 
-% \end{enumerate}
-
-% \item Multinomial Distribution
-
-% The multinomial distribution generalizes the binomial distribution to more than two categories. Suppose that we observe $n$ data points each falling into one of $c$ categories independently with probabilities $\bm \pi=(\pi_1,\ldots,\pi_c)$ (note that $\sum_{j=1}^c \pi_c=1$). Let $\bm X=(X_1,\ldots,X_c)'$ record the number of observations in each category. The density function is:
-% \[
-% f(\bm x|\bm \pi)=\frac{n!}{\prod_{j=1}^c x_j!} \prod_{j=1}^c \pi_j^{x_c}. 
-% \]
-% \begin{enumerate}[a)]
-% \item Construct the likelihood function.
-% \item Derive the maximum likelihood estimator, $\hat {\bm \pi}$. (Hint: think carefully about the number of parameters in this model.)
-% \item Obtain the asymptotic distribution of $\hat {\bm \pi}$.
-% \item Construct the likelihood ratio statistic for testing
-%   \[
-%   H_0:\bm \pi=\bm \pi_0 \mbox{ vs } H_a:\bm \pi \neq \bm \pi_0
-%   \]
-%   and find its asymptotic distribution.
-
-% \item In genetics, a gene represents a location on a chromosome and the different forms the gene can take are called alleles. A genotype is defined by the pair of alleles an individual has -- one allele from their mother and one from their father. A gene with two alleles, labelled $A$ and $a$, has four different genotypes: $AA$, $Aa$, and $aa$. Let $p$ and $q=1-p$ denote the proportion of all alleles in a population that are $A$ and $a$ respectively. Let $f(X)$ denote the proportion of individuals in the population with genotype $X$. The gene is in Hardy-Weinberg equilibrium if:
-% \[
-% f(AA)=p^2, \quad f(Aa)=2pq, \quad f(aa)=q^2.
-% \]
-% In this case, the genotype frequencies in a large population will remain constant from one generation to the next unless acted upon by outside selection.
-
-% The amount of spotting in Scarlet tiger moths is largely determined by a gene with two alleles. Individuals of genotype $AA$ are white-spotted, individuals with genotype $aa$ have little spotting, and individuals of genotype $Aa$ are intermediate. A study of 1612 moths conducted in 1971 observed the following counts:
-% \begin{center}
-%   \begin{tabular}{l|ccc|c}
-%     & White-spotted ($AA$) & Intermediate ($Aa$) & Little spotting ($aa$) & Total\\
-%     \hline
-%     Number & 1469 & 138 & 5 & 1612
-%   \end{tabular}
-% \end{center}
-
-% Is the system in Hardy-Weinberg equilibrium?
-% \end{enumerate}
-% \end{enumerate}
-
-\end{document}
-
-%%% Local Variables:
-%%% mode: latex
-%%% TeX-master: t
-%%% End:
