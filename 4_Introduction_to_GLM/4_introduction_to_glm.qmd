@@ -1,0 +1,429 @@
+\documentclass[12pt]{article}
+
+\usepackage{bm,enumerate,amsmath,lineno,color}
+\usepackage[margin=2.0cm]{geometry}
+\usepackage{fancyhdr}
+
+% Custom commands
+\newcommand{\todi}{\overset{\mathcal{D}}{\to}}
+\newcommand{\topr}{\overset{\mathcal{P}}{\to}}
+\newcommand{\var}{\mbox{Var}}
+
+% Footer
+\pagestyle{fancy}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{1pt}
+\fancyhf{}
+\lfoot{Copyright Simon Bonner, University of Western Ontario, 2023}
+\rfoot{Page \thepage}
+
+% Line number fix for equations
+\newcommand*\patchAmsMathEnvironmentForLineno[1]{%
+  \expandafter\let\csname old#1\expandafter\endcsname\csname #1\endcsname
+  \expandafter\let\csname oldend#1\expandafter\endcsname\csname end#1\endcsname
+  \renewenvironment{#1}%
+     {\linenomath\csname old#1\endcsname}%
+     {\csname oldend#1\endcsname\endlinenomath}}%
+\newcommand*\patchBothAmsMathEnvironmentsForLineno[1]{%
+  \patchAmsMathEnvironmentForLineno{#1}%
+  \patchAmsMathEnvironmentForLineno{#1*}}%
+\AtBeginDocument{%
+\patchBothAmsMathEnvironmentsForLineno{equation}%
+\patchBothAmsMathEnvironmentsForLineno{align}%
+\patchBothAmsMathEnvironmentsForLineno{flalign}%
+\patchBothAmsMathEnvironmentsForLineno{alignat}%
+\patchBothAmsMathEnvironmentsForLineno{gather}%
+\patchBothAmsMathEnvironmentsForLineno{multline}%
+}
+
+\begin{document}
+
+\begin{center}
+  \begin{Large}
+    {\bf SS9055B: Generalized Linear Models}\\
+    \medskip
+    Winter 2023
+
+    \medskip
+    {\bf Section 4: Introduction Generalized Linear Models}\\
+    {\bf Version 2023.1}
+\end{Large}
+\end{center}
+
+\linenumbers
+
+\section*{Objectives}
+This section of the course will introduce you to the class of generalized linear models and likelihood inference for these models. By the end of this section you should be able to:
+\begin{itemize}
+\item explain the importance of generalized linear models in modern statistics, 
+\item show that a model fits into the class of generalized linear models by identifying the random component, systematic component, and link function,
+\item derive likelihood equations, 
+\item apply the iterativley (re-)weighted least squares algorithm to compute the MLEs, and
+\item obtain the approximate covariance matrix for the MLEs.
+\end{itemize}
+
+\section{Introduction}
+
+Enough with the introductory material! We will now begin our discussion of generalized linear models (GLM) in earnest. The three specific extensions of the linear regression model that we will work with during the course are the logistic regression model for binomial data, the Poisson log-linear model for count data, and the multinomial model for categorical data. Maximum likelihood theory and applications for these models date to the mid-20th century and they were considered separately for a long time. One of the major achievements of statistics in the last century was the development of the theory of the exponential family of distributions which lead to the realization that these models -- and many other linear models -- can be fit into the same framework. This allows us to study general methods of estimation and inference that can be applied to a wide range of models without needing to develop tools separately.
+
+To motivate the structure of a GLM, consider what we teach introductory statistics students about linear regression models that don't satisfy the assumptions of linearity, normality, and constant variance (heteroscedasticity). The standard multiple linear regression model can be written as:
+\[
+Y_i=\beta_0+\beta_1 x_1 + \ldots + \beta_p x_p + \epsilon_{i}, \quad
+i=1,\ldots,N.
+\] 
+Usually we assume that the errors, $\epsilon_{i}$, are independent draws from an identical normal distribution with mean zero and constant variance, $\sigma^2$.
+
+Suppose that we fit this model and we find that the residuals form a curved pattern. What do we tell students to do? One thing we tell them to do is to transform the response variable. This is one way to achieve linearity.
+
+Suppose that we fit this model and we find that the residuals do not have constant variance. Most often, they have a funnel shape so that the residuals are larger for larger values of the predictors. What do we tell students to do? One thing we tell them is to transform the response variable. This is called stabilizing the variance.
+
+Suppose that we fit this model and we find that the residuals are not normally distributed. Perhaps the distribution of the residuals is positively skewed so that values below the regression line lie closer to the mean. What do we tell students to do? One thing we tell them to do is to transform the response variable to achieve normality. 
+
+What should we tell students if different transformations are required to achieve linearity, normality, and to stabilize the variance?
+
+The problem here is that we are trying to solve problems with three aspects of the model -- linearity of the mean, normality of the residuals, and constant variance -- with the same tool. The framework of GLMs allow us to separate linearity of the mean and the distribution of the errors by separately defining the random component of the model (the distribution of the errors), the systematic component (the linear predictor), and a link function which relates the two.
+
+\section{Generalized Linear Model Framework}
+
+Models within the GLM framework have a certain structure defined by three components: the random component, the systematic component, and the link function.
+
+\subsection{Random Component}
+
+The first component of a GLM defines the distribution of the of the data given the mean. Standard linear regression models assume that the data are normally distributed about the mean. The methods developed for generalized linear modeling allow the data to come more generally from a larger class of distributions which form the exponential families. Specifically, we are going to consider distributions in a subset of the exponential family called the exponential dispersion familt. Generally, the random variable $Y$ indexed by $\theta$ is a member of the exponential dispersion family if we can write the density of $Y$ (either the pdf for continuous random variables or the pmf for discrete random variables) as:
+\[
+f(y|\theta,\phi)=\exp\left( \frac{y\theta-b(\theta)}{a(\phi)} + c(y,\phi) \right).
+\]
+The parameter $\theta$ is called the natural or canonical parameter and may not be equal to the parameter that you are used to seeing for different distributions (e.g., $p$ for the binomial or $\lambda$ for the Poisson). Instead, $\theta$ may be defined by some one-to-one transformation of the usual parameter. The function $b(\theta)$ is called the cumulant function and $\phi$ is the dispersion parameter. One important property of the exponential dispersion family is that the mean and variance of $Y$ can be obtained directly from the cumulant function and dispersion function:
+\begin{enumerate}
+\item $\mu=E(Y)=b'(\theta)$
+\item $\mbox{Var}(Y)=b''(\theta)a(\phi).$
+\end{enumerate}
+The proof of this property will be an exercise on the next assignment.
+
+For the most part, we will actually limit ourselves to a simplified version of the exponential family where $a(\phi)=\phi/\omega$ so that
+\[
+f(y|\theta,\phi)=\exp\left( \omega \left[\frac{y\theta-b(\theta)}{\phi}\right] + c(y,\phi) \right)
+\]
+where $\omega$ is a known weight and $\phi$ is a constant to be estimated. An example of this is weighted linear regression in which each $Y_i$ is the average of $\omega_i$ \textit{iid} random variables and so the variance of $Y_i$ is $\sigma^2/\omega_i$ for some known value of  (like the number of observations if $Y_i$ is an average). In this case:
+\begin{enumerate}
+\item $\mu=E(Y)=b'(\theta)$
+\item $\mbox{Var}(Y)=\frac{\phi b''(\theta)}{\omega}.$
+\end{enumerate}
+Our assumption in the GLM framework will be that the observations $Y_1,\ldots,Y_N$ come from the same member of the exponential family so that the functions $b(\cdot)$ and $c(\cdot,\cdot)$ and the parameter $\phi$ in common. However, the weights $\omega_i$ and natural parameters $\theta_i$ may vary by observation. In particular, we will assume that the weights are known and model the natural parameters as functions of covariates and regression coefficients, as defined by the final two components. 
+
+\subsection{Systematic Component}
+
+The second component of the a GLM describes how the predictor variables combine to affect the mean of the response. Consider our simple linear regression model again:
+\[
+Y_i=\beta_0+\beta_1 x_{i1} + \ldots + \beta_p x_{ip} + \epsilon_i, \quad i=1,\ldots,N
+\]
+where the residuals are independent with constant variance $\sigma^2$.  We could rewrite this as:
+\begin{align*}
+  E(Y_i)&=\eta_i\\
+  \mbox{Var}(Y_i)&=\sigma^2
+\end{align*}
+where:
+\[
+\eta_i=\beta_0 + \beta_1 x_{i1} + \ldots + \beta_p x_{ip}.
+\]
+This term is called the linear predictor. In a GLM, the mean as a function of the linear predictor. 
+
+\subsection{Link Function}
+
+The final component of a GLM describes the relationship between the random and systematic components of the model. Specifically, it determines the relationship between the mean of the data distribution and the linear predictor. Given the random component, $Y$, and the linear predictor, $\eta$, the link function is a one-to-one function $g(\cdot)$ such that:
+\[
+g(\mu)=\eta \mbox{ and } \mu = g^{-1}(\eta). 
+\]
+The simple linear regression model employs the identity link function,
+\[
+g(\mu)=\mu,
+\]
+so that the mean is equal to the linear predictor, $\mu=\eta$. However, this need not be the case. Note that the expression for the mean above allows us to extend this relationship to the canonical parameter. Specifically, if $\mu=g^{-1}(\eta)$ and  $\mu=b'(\theta)$ then $b'(\theta) = g^{-1}(\eta)$. The canonical link function for a model is the function $g(\cdot)$ such that $g(\mu)=\theta$. These link functions have special properties which we will encounter later, but the choice of the link function should be based on your knowledge of the system being studied. 
+
+
+\subsection{Full Form}
+
+Putting these three components together, we can write the full form of the GLM by saying that $Y_1,\ldots,Y_n$ are independent random variables such that the pdf/pmf of $Y_i$ is:
+\[
+f(y_i|\theta_i,\phi)=\exp\left( \omega_i\left[\frac{y_i\theta_i-b(\theta_i)}{\phi}\right] + c(y_i,\phi) \right)
+\]
+where the mean of $Y_i$, $\mu_i=b'(\theta_i)$, is defined by the linear predictor and link function as
+\[
+g(\mu_i)=\eta_i=\beta_0 + \beta_1 x_{i1} + \ldots + \beta_p x_{ip}
+\]
+where $x_{i1},\ldots,x_{ip}$ are the values of $p$ covariates or predictors associated with the $i^{th}$ observation. We can think of this as a linear model for the transformed mean of the distribution of $Y_i$. Note that the form of the exponential dispersion family somewhat hides the role of the regression coefficients, $\bm \beta$, because this parameter does not appear directly in the density. It is important to keep in mind that the natural parameter, $\theta_i$, is a function of $\bm \beta$ and $\bm x_i$ defined through $b'(\theta)$ and $g(\mu)$.
+
+\section{Maximum Likelihood Inference for GLMs}
+\label{sec:mles-for-glm}
+
+The primary advantage of the GLM framework is that it unifies methods of inference for a range of different models. We will consider maximum likelihood inference in depth, but this also applies to Bayesian inference.
+
+\subsection{Likelihood Equations}
+
+Suppose that we have a model which falls within the GLM framework. We have assumed that the responses from our $n$ observations are independent conditional on the observed predictor variables. So the likelihood function is:
+\[
+L(\bm \beta,\phi|\bm y)=\prod_{i=1}^N f(y_i|\bm \beta,\phi)
+\]
+and the log-likelihood is
+\[
+l(\bm \beta,\phi|\bm y)=\sum_{i=1}^N \log f(y_i|\bm \beta,\phi)
+\]
+where
+\[
+\log f(y_i|\bm \beta,\phi)=\omega_i\left[\frac{y_i\theta_i-b(\theta_i)}{\phi}\right] + c(y_i,\phi)
+\]
+since each $Y_i$ belongs to the exponential dispersion family with $b(\cdot)$, $c(\cdot,\cdot)$ and $\phi$ in common.
+
+The likelihood functions we will work with will all be regular, smooth functions and so we can find the maximum by differentiating to identify critical points. The results equations that we need to solve to compute the MLE of $\bm \beta$,
+\[
+\frac{\partial l}{\partial \beta_j}=\sum_{i=1}^N \frac{\partial l_i}{\partial \beta_j}=0, \quad j=0,\ldots,p
+\]
+are called the likelihood equations. The individual equations are derived by applying the chain rule:
+\begin{equation}
+  \label{eq:le1}
+  \frac{\partial l_i}{\partial \beta_j}= \frac{\partial l_i}{\partial \theta_i} \frac{\partial \theta_i}{\partial \mu_i} \frac{\partial \mu_i}{\partial \eta_i} \frac{\partial \eta_i}{\partial \beta_j}.
+\end{equation}
+Considering each component in turn we get:
+\begin{enumerate}[i)]
+\item $\frac{\partial l_i}{\partial \theta_i}=\omega_i\frac{y_i-b'(\theta_i)}{\phi}=\omega_i\frac{y_i-\mu_i}{\phi}$,
+\item $\frac{\partial \theta_i}{\partial \mu_i}=\left(\frac{\partial \mu_i}{\partial \theta_i}\right)^{-1}=\left(\frac{\partial}{\partial \theta_i}  b'(\theta_i)\right)^{-1}=(b''(\theta_i))^{-1}=\frac{\phi}{\omega_i\mbox{Var}(Y_i)}$,
+\item $\frac{\partial \mu_i}{\partial \eta_i}=\left(\frac{\partial g^{-1}(\eta_i)}{\partial \eta_i}\right)=\left(\frac{\partial g(\mu_i)}{\partial \mu_i}\right)^{-1}$ which can't be simplified until the link function is specified, and
+\item $\frac{\partial \eta_i}{\partial \beta_j}=x_{ij}$ where we set $x_{i0}=1$ for all $i=1,\ldots,n$.
+\end{enumerate}
+Substituting these elements back into equation \eqref{eq:le1} yields
+\[
+\frac{\partial l_i}{\partial \beta_j}= \frac{(y_i-\mu_i)x_{ij}}{\mbox{Var}(Y_i)}\frac{\partial \mu_i}{\partial \eta_i}
+\]
+so that the likelihood equations are
+\[
+\sum_{i=1}^N\frac{(y_i-\mu_i)x_{ij}}{\mbox{Var}(Y_i)}\frac{\partial \mu_i}{\partial \eta_i}=0, \quad j=0,\ldots,p.
+\]
+The unique solutions to these equations are the MLEs. Note again that the vector of regression coefficeints, $\bm \beta$, is hidden within the mean for each observation, $\mu_i$. Different link functions produce different values of $\partial \mu_i/\partial \eta_i$ and hence produce different estimates of $\bm \beta$ for the same data.
+
+Note that the likelihood equations can now be written down very easily once the GLM is completely defined -- i.e., once we have selected a distribution for the data and a link function. All we need to know are the mean and variance of each observation in terms of the parameters $\bm \beta$ and $\phi$, and the first derivative of the link function. 
+
+\subsection{Asymptotic Covariance Matrix}
+\label{sec:cov-for-glm}
+
+Since we are dealing with distributions in the exponential family the regularity conditions for asymptotic normality of the MLEs are going to be satisfied and do not need to be checked (we will not do the math to show this). This means that we can approximate the variance-covariance matrix of the parameters by the inverse information matrix:
+\[
+\mbox{cov}(\hat {\bm \beta})=I^{(n)}(\bm \beta)^{-1}.
+\]
+We cannot apply the simplification that the information for the sample of size $n$ is $n$ times the information because the response variables are not identically distributed. Their means change depending on the values of the covariates. However, the $j,k$ entry of the information matrix can still be computed fairly easily:
+\[
+-E\left(\frac{\partial^2 l}{\partial \beta_j \partial \beta_k}\right)
+=-E\left(\frac{\partial}{\partial \beta_k} \sum_{i=1}^N\frac{(y_i-\mu_i)x_{ij}}{\mbox{Var}(Y_i)}\frac{\partial \mu_i}{\partial \eta_i}\right)
+=\sum_{i=1}^N\frac{x_{ij}x_{ik}}{\mbox{Var}(Y_i)} \left(\frac{\partial \mu_i}{\partial \eta_i}\right)^2.
+\]
+In matrix form
+\[
+I(\bm \beta)=X' W(\bm \beta) X
+\]
+where $W(\bm \beta)$ is the $N \times N$ diagonal matrix with $i^{th}$ entry
+\[
+w_i=\frac{1}{\mbox{Var}(Y_i)} \left(\frac{\partial \mu_i}{\partial \eta_i}\right)^2.
+\]
+We can then estimate the asymptotic variance of $\hat{\bm \beta}$ by:
+\[
+\widehat{\mbox{cov}(\hat{\bm \beta})}= (X' \hat{W} X)^{-1}
+\]
+where $\hat{W}=W(\hat{\bm \beta})$. This expression should look familiar to you because it is the variance matrix for the coefficients in a weighted regression model except that we are estimating the weights based on estimates of the coefficients instead of assuming that they are known. Note that the weights in this equation, $w_i$ (double-u $i$), are distinct from the weights in the exponential dispersion family, $\omega_i$ (omega $i$), both in value and in notation.
+
+\section{Computing the MLEs}
+
+In section \ref{sec:mles-for-glm} we derived the likelihood equations for a general model within the GLM framework. However, these equations cannot be solved analytically in most cases. Instead, we need to apply numerical methods to compute the MLEs. This could be done by applying any canned optimization routine, like those available through \texttt{optim()} function in \texttt{R}. However, there is a very nice generic algorithm for solving the likelihood equations based on the Newton-Raphson algorithm that is both quick and stable and, as you will see, produces the asymptotic covariance matrix directly as part of the optimization algorithm. 
+
+\subsection{Newton-Raphson Algorithm}
+
+The the most common algorithms for optimization (i.e., maximizing or miniziming a function) are the Newton-Raphson (NR) algorithm\footnote{It's tempting to call this the NRA, but that acronym has already been taken so we'll stick with NR algorithm.} and its extensions. We'll start by considering optimization in 1-dimension and then derive the formulas for multiple dimensions.
+
+Suppose that we wish to optimize a function $f(x)$, $x \in \Re$, which is at least twice differnetiable. The NR algorithm works by approximating $f(x)$ by a quadratic function about some point $x_0$,
+\[
+f(x) \approx f(x_0) + f'(x_0)(x-x_0)+\frac{f''(x_0)(x-x_0)^2}{2}.
+\]
+To identify the critical points we need to solve $f'(x)=0$. Differentiating both sides wrt $x$ yields
+\[
+f'(x) \approx f'(x_0) + f''(x_0)(x-x_0)
+\]
+and setting this equal to 0 and solving for $x$ we find that
+\[
+x=x_0 - f'(x_0)/f''(x_0).
+\]
+The NR algorithm works by using this equation to update our guesses of the critical points until we reach convergence. Given a current guess, $x^{(t)}$, we set
+\[
+x^{(t+1)}=x^{(t)} - f'(x^{(t)})/f''(x^{(t)})
+\]
+and iterate until the difference between $x^{(t)}$ and $x^{(t+1)}$ is sufficiently small.
+
+Suppose now that $f(\bm x)$ is a multivariate function. Then we approximate $f(\bm x)$ by
+\[
+f(\bm x) \approx 
+f(\bm x_0) + 
+\frac{df(\bm x_0)}{d \bm x}(\bm x-\bm x_0) + 
+\frac{1}{2} (\bm x-\bm x_0) ' \frac{d^2f(x_0)}{d \bm x d \bm x'}(\bm x-\bm x_0)
+\]
+and the NR algorithm update becomes
+\[
+\bm x^{(t+1)}=\bm x^{(t)} - \left(\frac{d^2f(x^{(t)})}{d \bm
+    x ~ d\bm x'}\right)^{-1} \frac{df(\bm x^{(t)})}{d \bm x}.
+\]
+
+Applying this to the problem of finding the MLEs, suppose that we wish to maximize $l(\bm \beta)$. The NR iteration is
+\[
+\bm \beta^{(t+1)}=\bm \beta^{(t)} - \left(\frac{d^2l(\bm \beta^{(t)})}{d \bm
+    \beta ~ d \bm \beta'}\right)^{-1} \frac{dl(\bm \beta^{(t)})}{d \bm \beta}.
+\]
+Sometimes you will see this written as
+\[
+\bm \beta^{(t+1)}=\bm \beta^{(t)} - \left(\frac{d^2l(\bm \beta^{(t)})}{d \bm \beta ~ d \bm \beta'}\right)^{-1} u(\bm \beta^{(t)})
+\]
+where $u(\bm \beta)=dl(\bm \beta)/d \bm \beta$ is called the score function. This is really just the derivative of the log-likelihood, but it is important enough in its own right to deserve its own name.
+
+\subsection{Fisher Scoring}
+
+One modified version of the NR algorithm that is particularly applicable to GLMs is the Fisher scoring algorithm. The NR algorithm depends on the second derivative of the log-likelihood evaluated at the observed data. Explicitly, we need to compute the matrix
+\begin{equation}
+  \label{eq:obsinf}
+-\left(\frac{d^2}{d \bm \beta ~ d \bm \beta'} l(\bm \beta^{(t)},\bm y)\right)
+\end{equation}
+which has $j,k$ entry
+\[
+-\left.\frac{\partial^2}{\partial \beta_j \partial \beta_{k}} l(\bm \beta,\bm y) \right|_{\bm \beta=\bm \beta^{(t)}}
+\]
+where $\bm y$ represents the observed data. This matrix looks almost like the information matrix, but the two are not equal. The information matrix has $j,k$ entry
+\[
+-E\left(\frac{\partial^2}{\partial \beta_j \partial \beta_{k}} l(\bm \beta,\bm Y) \right).
+\]
+The matrix in equation \eqref{eq:obsinf} is found by replacing the random variable $\bm Y$ with the observed value $\bm y$ and removing the expected value (since there are no longer any random quantities). For this reason, the matrix is called the observed information matrix.
+
+Fisher scoring replaces the observed information matrix with the expected information (or just the information)
+\[
+I(\bm \beta^{(t)})=-E\left(\frac{d^2}{d \bm \beta ~ d \bm \beta'} l(\bm \beta^{(t)},\bm Y)\right).
+\]
+An iteration in the Fisher Scoring algorithm is then defined as:
+\[
+\bm \beta^{(t+1)}=\bm \beta^{(t)} + I^{-1}(\bm \beta^{(t)}) u(\bm \beta^{(t)})
+\]
+where $I^{-1}(\bm \beta^{(t)})$ represents the inverse of the information matrix given the current values of the parameters, $\bm \beta^{(t)}$. Equivalently $\bm \beta^{(t+1)}$ is the solution to:
+\[
+ I(\bm \beta^{(t)}) \bm \beta^{(t+1)}= I(\bm \beta^{(t)})\bm \beta^{(t)} + u(\bm \beta^{(t)}).
+\]
+
+Both algorithms work by providing successive quadratic approximations to the likelihood. The only difference is the value of the second order term. One advantage of the Fisher Scoring algorithm is that it immediately produces the approximate covariance matrix for the parameters as a by-product. Consider that at convergence $\bm \beta^{(t)}\approx \bm \beta^{(t+1)}$ and we set $\hat{\bm \beta}=\beta^{(t+1)}$. Then:
+\[
+\widehat{\mbox{cov}}(\hat{\bm \beta})
+=I^{-1}(\hat{\bm \beta})
+=I^{-1}(\bm \beta^{(t+1)})
+\approx I^{-1}(\bm \beta^{(t)})
+\]
+which is the expected information computed on the final iteration. The gain may be small on modern computers, but this means that we have to do no extra work to compute variance estimates for the parameters.
+
+\subsection{ML as Reweighted Least Squares}
+
+To gain some further insight into the algorithm for fitting GLMs we can compare the Fisher Scoring algorithm with the least squares method of fitting linear regression models. Suppose that we have a simple linear regression model,
+\[
+z_i=x'_i \bm \beta + \epsilon_i, \quad i=1,\ldots,N,
+\]
+or in matrix form
+\[
+\bm z= \bm X \bm \beta + \bm \epsilon.
+\]
+If $\epsilon \sim N(0,\sigma^2 I_N)$ then the MLEs,
+\[
+\hat{\bm \beta}=(\bm X' \bm X)^{-1} \bm X'\bm z,
+\]
+are also the simple least squares estimates.  More generally,if $\epsilon \sim N(0,\sigma^2V)$ for known matrix $\bm V$ then
+\[
+\hat{\bm \beta}=(\bm X' \bm V^{-1} \bm X)^{-1} \bm X'\bm V^{-1} \bm z.
+\]
+Equivalently, $\hat{\bm \beta}$ is the solution of the normal equations,
+\begin{equation}
+  \label{eq:ne}
+  \bm X' \bm V^{-1} \bm X \hat{\bm \beta}= \bm X'\bm V^{-1} \bm z.
+\end{equation}
+These are referred to as weighted least squares estimates if $\bm V$ is diagonal and generalized least squares estimates if $\bm V$ is not diagonal.
+
+To compare this with the Fisher Scoring algorithm we need to rewrite the score equation in a more useful manner. Recall that
+\[
+\frac{\partial l}{\partial \beta_j}=\sum_{i=1}^N
+\frac{(y_i-\mu_i)x_{ij}}{\mbox{Var}(Y_i)}\frac{\partial \eta_i}{\partial \mu_i}.
+\]
+In matrix form we get
+\[
+u(\bm \beta)=\frac{d  l}{d \bm \beta}=\bm X'\bm W \bm D^{-1}(\bm y
+-\bm \mu)
+\]
+where $\bm W$ is the matrix of weights we computed previously, $\bm W=\mbox{diag}(w_1,\ldots,w_n)$ where:
+\[
+w_i=\frac{1}{\mbox{Var}(Y_i)}\left(\frac{\partial \mu_i}{\partial \eta_i}\right)^2
+\]
+and $\bm D$ is the diagonal matrix with entries $\frac{\partial \mu_i}{\partial \eta_i}$. Further, recall that:
+\[
+I(\bm \beta)=\bm X' \bm W(\bm \beta) \bm X.
+\]
+Substituting these expressions into the equations for a single iteration of the Fisher Scoring algorithm we get
+\begin{align*}
+  \bm X' \bm W_t \bm X \bm \beta^{(t+1)}&= \bm X' \bm W_t \bm X \bm \beta^{(t)} + \bm X'\bm W_t \bm D_t^{-1}(\bm y -\bm
+\mu)\\
+\end{align*}
+or
+\begin{equation}
+  \label{eq:irls}
+  \bm X' \bm W_t \bm X \bm \beta^{(t+1)}=\bm X' \bm W_t z(\bm \beta^{(t)})\\
+\end{equation}
+where
+\[
+z(\bm \beta^{(t)})=\bm X \bm \beta^{(t)} +\bm D^{-1}_t(\bm y -\bm
+\mu(\bm \beta^{(t)}).
+\]
+The quantities $W_t$ and $D_t$ represent the values of the matrices $W$ and $D$ computed at the current values of the parameters, $\bm \beta^{(t)}$. 
+
+What does this show? Comparing equations \eqref{eq:ne} and \eqref{eq:irls} we can see that they have exactly the same form. This shows that each iteration of the Fisher Scoring algorithm is equivalent to conducting weighted least squares using a transformed version of the original response variables, $z(\bm \beta^{(t)})$, sometimes called pseudo-data which depends on the current values of the parameters. On each iteration of the algorithms we update the transformed data and compute the weight matrix given our current estimates of the parameters, and then we compute least squares estimates as if we had normal data. For this reason, the algorithm is known as iteratively reweighted least squares.
+
+As an alternative interpretation we can consider that least squares estimation is equivalent to fitting a linear regression model with normal errors. In essence, the Fisher scoring algorithm is equivalent to fitting linear regression models to a transformation of the original data where the transformation uses the current values of the parameters to achieve the best possible normal approximation. The reason we restrict to the exponential family of distributions is that, in essence, these are the distributions which are well approximated by the normal.
+
+% \subsection{Simplifications for Canonical Link Functions}
+
+% The canonical link function equates the natural parameter, $\theta_i$, and the linear predictor, $\eta_i$. Then $\partial \theta_i/\partial \eta_i=1$ so that:
+% \[
+% \frac{\partial l_i}{\partial \beta_j}=
+% \frac{\partial l_i}{\partial \theta_i}
+% \frac{\partial \theta_i}{\partial \eta_i}
+% \frac{\partial \eta_i}{\partial \beta_j}=
+% \frac{\partial l_i}{\partial \theta_i}
+% \frac{\partial \eta_i}{\partial \beta_j}=
+% \frac{(y_i-\mu_i)x_{ij}}{a(\phi)}
+% .
+% \]
+% \noindent
+% Now consider the Fisher scoring algorithm. The second derivative becomes:
+% \[
+% \frac{\partial l_i}{\partial \beta_j \partial \beta_{\textcolor{red}{k}}}
+% =\frac{\partial}{\partial \beta_j} \frac{(y_i-\mu_i)x_{ij}}{a(\phi)}
+% =\frac{-x_{ij}}{a(\phi)} \left(\frac{\partial \mu_i}{\partial \beta_{\textcolor{red}{k}}}\right)
+% \]
+% which is independent of $y_i$. This means that the expected and observed information matrices will be equal. When we use the canonical link function there is no difference between FS and the NR algorithm. 
+
+% Suppose further that $a(\phi)=1$. Then:
+% \[
+% \frac{\partial l_i}{\partial \beta_j}=(y_i-\mu_i)x_{ij}.
+% \]
+% Summing over $i$ we get the likelihood equations:
+% \[
+% \sum_{i=1}^N \frac{\partial l_i}{\partial \beta_j}=
+% \sum_{i=1}^N (y_i-\mu_i)x_{ij}=0
+% \]
+% which imply that:
+% \[
+% \sum_{i=1}^N y_ix_{ij}=\sum_{i=1}^N \mu_i x_{ij}.
+% \]
+% This implies that the solutions to the likelihood equations, the maximum likelihood estimates, are found by equating the observed sufficient statistics with their expected values.
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
+
+%  LocalWords:  heteroscedasticity
