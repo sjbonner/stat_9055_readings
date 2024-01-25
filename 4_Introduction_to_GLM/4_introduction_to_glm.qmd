@@ -138,8 +138,7 @@ g(\mu_i)=\eta_i=\beta_0 + \beta_1 x_{i1} + \ldots + \beta_p x_{ip}
 $$
 where $x_{i1},\ldots,x_{ip}$ are the values of $p$ covariates or predictors associated with the $i^{th}$ observation. We can think of this as a linear model for the transformed mean of the distribution of $Y_i$. Note that the form of the exponential dispersion family somewhat hides the role of the regression coefficients, $\bm \beta$, because this parameter does not appear directly in the density. It is important to keep in mind that the natural parameter, $\theta_i$, is a function of $\bm \beta$ and $\bm x_i$ defined through $b'(\theta)$ and $g(\mu)$.
 
-# Maximum Likelihood Inference for GLMs
-\label{sec:mles-for-glm}
+# Maximum Likelihood Inference for GLMs {#sec-mles-for-glm}
 
 The primary advantage of the GLM framework is that it unifies methods of inference for a range of different models. We will consider maximum likelihood inference in depth, but this also applies to Bayesian inference.
 
@@ -164,10 +163,9 @@ $$
 \frac{\partial l}{\partial \beta_j}=\sum_{i=1}^N \frac{\partial l_i}{\partial \beta_j}=0, \quad j=0,\ldots,p
 $$
 are called the likelihood equations. The individual equations are derived by applying the chain rule:
-\begin{equation}
-  \label{eq:le1}
-  \frac{\partial l_i}{\partial \beta_j}= \frac{\partial l_i}{\partial \theta_i} \frac{\partial \theta_i}{\partial \mu_i} \frac{\partial \mu_i}{\partial \eta_i} \frac{\partial \eta_i}{\partial \beta_j}.
-\end{equation}
+$$
+\frac{\partial l_i}{\partial \beta_j}= \frac{\partial l_i}{\partial \theta_i} \frac{\partial \theta_i}{\partial \mu_i} \frac{\partial \mu_i}{\partial \eta_i} \frac{\partial \eta_i}{\partial \beta_j}.
+$$ {#eq-le1}
 Considering each component in turn we get:
 \begin{enumerate}[i)]
 \item $\frac{\partial l_i}{\partial \theta_i}=\omega_i\frac{y_i-b'(\theta_i)}{\phi}=\omega_i\frac{y_i-\mu_i}{\phi}$,
@@ -175,7 +173,7 @@ Considering each component in turn we get:
 \item $\frac{\partial \mu_i}{\partial \eta_i}=\left(\frac{\partial g^{-1}(\eta_i)}{\partial \eta_i}\right)=\left(\frac{\partial g(\mu_i)}{\partial \mu_i}\right)^{-1}$ which can't be simplified until the link function is specified, and
 \item $\frac{\partial \eta_i}{\partial \beta_j}=x_{ij}$ where we set $x_{i0}=1$ for all $i=1,\ldots,n$.
 \end{enumerate}
-Substituting these elements back into equation \eqref{eq:le1} yields
+Substituting these elements back into equation @eq-le1 yields
 $$
 \frac{\partial l_i}{\partial \beta_j}= \frac{(y_i-\mu_i)x_{ij}}{\mbox{Var}(Y_i)}\frac{\partial \mu_i}{\partial \eta_i}
 $$
@@ -187,8 +185,7 @@ The unique solutions to these equations are the MLEs. Note again that the vector
 
 Note that the likelihood equations can now be written down very easily once the GLM is completely defined -- i.e., once we have selected a distribution for the data and a link function. All we need to know are the mean and variance of each observation in terms of the parameters $\bm \beta$ and $\phi$, and the first derivative of the link function. 
 
-## Asymptotic Covariance Matrix
-\label{sec:cov-for-glm}
+## Asymptotic Covariance Matrix {#sec-cov-for-glm}
 
 Since we are dealing with distributions in the exponential family the regularity conditions for asymptotic normality of the MLEs are going to be satisfied and do not need to be checked (we will not do the math to show this). This means that we can approximate the variance-covariance matrix of the parameters by the inverse information matrix:
 $$
@@ -216,13 +213,13 @@ where $\hat{W}=W(\hat{\bm \beta})$. This expression should look familiar to you 
 
 # Computing the MLEs
 
-In section \ref{sec:mles-for-glm} we derived the likelihood equations for a general model within the GLM framework. However, these equations cannot be solved analytically in most cases. Instead, we need to apply numerical methods to compute the MLEs. This could be done by applying any canned optimization routine, like those available through \texttt{optim()} function in \texttt{R}. However, there is a very nice generic algorithm for solving the likelihood equations based on the Newton-Raphson algorithm that is both quick and stable and, as you will see, produces the asymptotic covariance matrix directly as part of the optimization algorithm. 
+In section @sec-mles-for-glm, we derived the likelihood equations for a general model within the GLM framework. However, these equations cannot be solved analytically in most cases. Instead, we need to apply numerical methods to compute the MLEs. This could be done by applying any canned optimization routine, like those available through \texttt{optim()} function in \texttt{R}. However, there is a very nice generic algorithm for solving the likelihood equations based on the Newton-Raphson algorithm that is both quick and stable and, as you will see, produces the asymptotic covariance matrix directly as part of the optimization algorithm. 
 
 ## Newton-Raphson Algorithm
 
-The the most common algorithms for optimization (i.e., maximizing or miniziming a function) are the Newton-Raphson (NR) algorithm\footnote{It's tempting to call this the NRA, but that acronym has already been taken so we'll stick with NR algorithm.} and its extensions. We'll start by considering optimization in 1-dimension and then derive the formulas for multiple dimensions.
+The most common algorithms for optimization (i.e., maximizing or minimizing a function) are the Newton-Raphson (NR) algorithm\footnote{It's tempting to call this the NRA, but that acronym has already been taken so we'll stick with NR algorithm.} and its extensions. We'll start by considering optimization in 1-dimension and then derive the formulas for multiple dimensions.
 
-Suppose that we wish to optimize a function $f(x)$, $x \in \Re$, which is at least twice differnetiable. The NR algorithm works by approximating $f(x)$ by a quadratic function about some point $x_0$,
+Suppose that we wish to optimize a function $f(x)$, $x \in \Re$, which is at least twice differentiable. The NR algorithm works by approximating $f(x)$ by a quadratic function about some point $x_0$,
 $$
 f(x) \approx f(x_0) + f'(x_0)(x-x_0)+\frac{f''(x_0)(x-x_0)^2}{2}.
 $$
@@ -267,10 +264,9 @@ where $u(\bm \beta)=dl(\bm \beta)/d \bm \beta$ is called the score function. Thi
 ## Fisher Scoring
 
 One modified version of the NR algorithm that is particularly applicable to GLMs is the Fisher scoring algorithm. The NR algorithm depends on the second derivative of the log-likelihood evaluated at the observed data. Explicitly, we need to compute the matrix
-\begin{equation}
-  \label{eq:obsinf}
+$$
 -\left(\frac{d^2}{d \bm \beta ~ d \bm \beta'} l(\bm \beta^{(t)},\bm y)\right)
-\end{equation}
+$$ {#eq-obsinf}
 which has $j,k$ entry
 $$
 -\left.\frac{\partial^2}{\partial \beta_j \partial \beta_{k}} l(\bm \beta,\bm y) \right|_{\bm \beta=\bm \beta^{(t)}}
@@ -279,7 +275,7 @@ where $\bm y$ represents the observed data. This matrix looks almost like the in
 $$
 -E\left(\frac{\partial^2}{\partial \beta_j \partial \beta_{k}} l(\bm \beta,\bm Y) \right).
 $$
-The matrix in equation \eqref{eq:obsinf} is found by replacing the random variable $\bm Y$ with the observed value $\bm y$ and removing the expected value (since there are no longer any random quantities). For this reason, the matrix is called the observed information matrix.
+The matrix in equation @eq-obsinf is found by replacing the random variable $\bm Y$ with the observed value $\bm y$ and removing the expected value (since there are no longer any random quantities). For this reason, the matrix is called the observed information matrix.
 
 Fisher scoring replaces the observed information matrix with the expected information (or just the information)
 $$
@@ -322,10 +318,9 @@ $$
 \hat{\bm \beta}=(\bm X' \bm V^{-1} \bm X)^{-1} \bm X'\bm V^{-1} \bm z.
 $$
 Equivalently, $\hat{\bm \beta}$ is the solution of the normal equations,
-\begin{equation}
-  \label{eq:ne}
+$$
   \bm X' \bm V^{-1} \bm X \hat{\bm \beta}= \bm X'\bm V^{-1} \bm z.
-\end{equation}
+$$ {#eq-ne}
 These are referred to as weighted least squares estimates if $\bm V$ is diagonal and generalized least squares estimates if $\bm V$ is not diagonal.
 
 To compare this with the Fisher Scoring algorithm we need to rewrite the score equation in a more useful manner. Recall that
@@ -352,10 +347,9 @@ Substituting these expressions into the equations for a single iteration of the 
 \mu)\\
 \end{align*}
 or
-\begin{equation}
-  \label{eq:irls}
-  \bm X' \bm W_t \bm X \bm \beta^{(t+1)}=\bm X' \bm W_t z(\bm \beta^{(t)})\\
-\end{equation}
+$$
+  \bm X' \bm W_t \bm X \bm \beta^{(t+1)}=\bm X' \bm W_t z(\bm \beta^{(t)})
+$$ {#eq-irls}
 where
 $$
 z(\bm \beta^{(t)})=\bm X \bm \beta^{(t)} +\bm D^{-1}_t(\bm y -\bm
@@ -363,7 +357,7 @@ z(\bm \beta^{(t)})=\bm X \bm \beta^{(t)} +\bm D^{-1}_t(\bm y -\bm
 $$
 The quantities $W_t$ and $D_t$ represent the values of the matrices $W$ and $D$ computed at the current values of the parameters, $\bm \beta^{(t)}$. 
 
-What does this show? Comparing equations \eqref{eq:ne} and \eqref{eq:irls} we can see that they have exactly the same form. This shows that each iteration of the Fisher Scoring algorithm is equivalent to conducting weighted least squares using a transformed version of the original response variables, $z(\bm \beta^{(t)})$, sometimes called pseudo-data which depends on the current values of the parameters. On each iteration of the algorithms we update the transformed data and compute the weight matrix given our current estimates of the parameters, and then we compute least squares estimates as if we had normal data. For this reason, the algorithm is known as iteratively reweighted least squares.
+What does this show? Comparing equations @eq-ne and @eq-irls we can see that they have exactly the same form. This shows that each iteration of the Fisher Scoring algorithm is equivalent to conducting weighted least squares using a transformed version of the original response variables, $z(\bm \beta^{(t)})$, sometimes called pseudo-data which depends on the current values of the parameters. On each iteration of the algorithms we update the transformed data and compute the weight matrix given our current estimates of the parameters, and then we compute least squares estimates as if we had normal data. For this reason, the algorithm is known as iteratively reweighted least squares.
 
 As an alternative interpretation we can consider that least squares estimation is equivalent to fitting a linear regression model with normal errors. In essence, the Fisher scoring algorithm is equivalent to fitting linear regression models to a transformation of the original data where the transformation uses the current values of the parameters to achieve the best possible normal approximation. The reason we restrict to the exponential family of distributions is that, in essence, these are the distributions which are well approximated by the normal.
 
