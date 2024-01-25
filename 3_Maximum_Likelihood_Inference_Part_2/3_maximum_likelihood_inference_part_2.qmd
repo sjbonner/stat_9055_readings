@@ -14,6 +14,7 @@ format:
           % Header and Footer
           \usepackage[footsepline=true]{scrlayer-scrpage}
           \lofoot{Copyright Simon Bonner, University of Western Ontario, 2024}
+          \cofoot{}
           \rofoot{Page \thepage}
 
           % Custom commands
