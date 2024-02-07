@@ -26,6 +26,7 @@ execute:
   echo: true
   message: false
   warning: false
+bibliography: ../readings.bib
 ---
 
 ```{r}
@@ -276,7 +277,7 @@ If we don't account for the differences in variances when we look at the residua
 $$
 r_i=\frac{y_i-\hat{\mu}_i}{SE(y_i-\hat{\mu}_i)}.
 $$
-To compute this we need to compute the standard error of the raw residual. Full details are provided in Section 4.5.7 of \citet{agresti2013} and I won't reproduce them here. The final result is that the standardized residual for the $i^{th}$ observation is 
+To compute this we need to compute the standard error of the raw residual. Full details are provided in Section 4.5.7 of @agresti2013 and I won't reproduce them here. The final result is that the standardized residual for the $i^{th}$ observation is 
 $$
   r_i=\frac{y_i-\hat{\mu}_i}{\sqrt{1-\hat{h}_i}}
 $$
@@ -384,6 +385,7 @@ where $\mu_i$ is the mean for observation $i$ and $\eta_i$ is the linear predict
 
 In most cases, it is easier to conduct inference on the scale of the linear predictor (i.e., setting `type.predict = "link"`) and then to transform the results by applying $g^{-1}(\cdot)$ to obtain inference on the scale of the mean. The reason for this is that the linear predictor is usually unbounded, whereas the mean is often restricted. This means that we can, e.g., construct Wald-type confidence intervals for the linear predictor and then transform them to the scale of the mean without having to worry about whether they might fall outside of the parameter space. This is generally the strategy that I will adopt through the rest of the course. 
 
-\bibliographystyle{apalike}
-\bibliography{../readings}
+# References
 
+::: {#refs}
+:::
