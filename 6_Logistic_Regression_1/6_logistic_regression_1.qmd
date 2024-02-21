@@ -1,6 +1,6 @@
 ---
 title: "SS9055B: Generalized Linear Models"
-subtitle: "Section 5: Inference for Generalized Linear Models"
+subtitle: "Section 6: Logistic Regression"
 knitr: 
   opts_chunk:
     fig.align: center
