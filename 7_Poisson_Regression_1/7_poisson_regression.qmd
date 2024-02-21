@@ -23,10 +23,10 @@ format:
           \newcommand{\var}{\mbox{Var}}
 execute: 
   eval: true
-  echo: true
+  echo: false
   message: false
   warning: false
-bibliography: 7_poisson_regression_1_example
+bibliography: 7_poisson_regression_1_example.bib
 ---
 
 \linenumbers
@@ -60,7 +60,7 @@ One way to test for an association is to apply the standard chi-square test. For
 
 ## Interpretation of Coefficients
 
-One advantage of the Poisson log-linear model over the logistic regression model is that the regression coefficients have a very clear and easy to understand interpretation\footnote{Don't worry. There will be a few other complications to deal with!}. Suppose that two individuals, with ids 1 and 2, share the same values of the predictors except for the $k^{th}$ which differs by one unit:
+One advantage of the Poisson log-linear model over the logistic regression model is that the regression coefficients have a very clear and easy to understand interpretation[^1]. Suppose that two individuals, with ids 1 and 2, share the same values of the predictors except for the $k^{th}$ which differs by one unit:
 $$
 x_{2j}=\left\{
   \begin{array}{ll}
@@ -78,6 +78,8 @@ $$
 \mu_2=\mu_1e^{\beta_k}.
 $$
 This shows that covariates in a log-linear model have a multiplicative effect on the mean. Increasing $x_{k}$ by one unit while adjusting for the other predictors (i.e., holding their values fixed) increases the mean $e^{\beta_k}$ times. More generally, increasing/decreasing $x_{k}$ by $u$ units while adjusting for the other predictors in the model increases/decreases the mean $e^{\beta_ku}$ times. We can also construct a $(1-\alpha)100\%$ confidence interval for this multiplicative effect simply by exponentiating the endpoints of a confidence interval for $\beta_k$. If $(L_k,U_k)$ is a $(1-\alpha)100\%$ confidence interval for $\beta_k$ then we can have confidence $(1-\alpha)100\%$ that increasing $x_{k}$ by $u$ units while holding the predictors fixed will increase the mean by between $e^{L_ku}$ and $e^{U_k u}$ times.
+
+[^1]: Don't worry. There will be a few other complications to deal with!
 
 ## Contingency Tables
 \label{sec:interpr-model-param}
@@ -211,28 +213,29 @@ H_0: \beta_{6ijk}=0, \mbox{ for all } i,j,k.
 $$
 If $X$ and $Y$ are independent for a specific level of $Z$, say level $k^*$, then we say that $X$ and $Y$ are conditionally independent given $Z=k^*$. Conditional independence occurs if $\beta_{ij} + \beta_{ijk^*}=0$ for all $i$ and $j$. If all interactions involving $X$ and $Y$ are equal to zero, i.e., $\beta_{ijk}=0$ and $\beta_{ij}=0$ for all $i$, $j$, $k$, then $X$ and $Y$ are independent.
 
-%\newpage
-
 ## Example
 
 The code in the file `melanoma.R` fits a Poisson log-linear model to the melanoma data and tests for an interaction:
-<<melanoma1,include = FALSE>>=
+```{r}
 source("melanoma.R")
-@
+```
+
 The results indicate that there is a significant association between the type and location of the tumour ($p<.001$). To understand the nature of this association we need to look at the estimates for the individual terms in the interaction:
-<<melanoma2>>=
+```{r}
 ## Compute model summary
-tidy(glm1, conf.int = TRUE) |> filter(grepl(":", term))
-@
+tidy(glm1, conf.int = TRUE) |> 
+  filter(grepl(":", term))
+```
+
 The results show that the interaction term, $\beta_{3ij}$, is signficant, and negative, for all types of tumours when the site is Head and Neck ($p<.001$ for all three terms), but is not significant when the site is Trunk ($p>.15$ for all three terms.
 
 To interpret these values we need to note that the base leves of the type of tumour are Hutchinson's Melanotic Freckle (HMF) and the base level of the location is Extremeties. These levels have been chosen because they come first alphabetically. The fact that the interactions including Head and Neck are all negative means that the relative rates of occurence of the SSM, No, and Ind types of tumour are all significanlty lower on the Head and Neck than on the Extremeties, which must mean that the relative rate of occurrence of HMF is higher on the Head and Neck than on the Extremeties. On the other hand, the fact that the interaction terms involving Trunk are not significant indicates that there is no evidence of a difference in the relative rates of occurence for any of the types of tumour between the Trunk and the Extremeties. Keep in mind that the interaction terms tell us only about the relative rates -- not the absolute rates. Based on these tests we can say nothing about how many tumours occurred at a given site, only that proportions varied or not. In order to compare the absolute rates we would need to look at the lower order effects, but most often this is not of interest. 
 
-Another way to see the differences is to examine the fitted values, which are shown in Figure \ref{fig:melanoma1}. The fitted values do represent the absolute rates, and you can see that there seem to be many more cases of tumours on the Extremeties than on the Trunk than on the Head and Neck. However, t is clear from this plot that the relative rates of the different types of cancer are similar between the Extremities and Trunk, but show a very different pattern for the head and neck. The code for creating this plot is included in the R script.
-\begin{figure}
-  \centering
+Another way to see the differences is to examine the fitted values, which are shown in Figure @fig-melanoma1. The fitted values do represent the absolute rates, and you can see that there seem to be many more cases of tumours on the Extremeties than on the Trunk than on the Head and Neck. However, t is clear from this plot that the relative rates of the different types of cancer are similar between the Extremities and Trunk, but show a very different pattern for the head and neck. The code for creating this plot is included in the R script.
+```{r}
+#| fig-cap: "Fitted rates for each type of cancer by site (Extremities, Head and Neck, and Trunk)."
+#| label: fig-melanoma1
 
-<<melanoma3,echo=FALSE,fig.height=3,fig.width=5>>=
 ## Load packages
 library(emmeans)
 library(broom)
@@ -249,14 +252,12 @@ glm1_means |>
   geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL)) +
   scale_x_continuous(name = "Location", breaks=1:3,labels=levels(glm1_means$site)) +
   labs(colour="Type")
-@
-  \caption{Fitted rates for each type of cancer by site (Extremities, Head and Neck, and Trunk).}
-  \label{fig:melanoma1}
-\end{figure}
+```
+
 
 ## Poisson Models for Rates
 
-In some problems the data may represent rates or densities not counts. This often occurs if the counts we have were obtained from time periods of different lengths or from regions of different size. We can't compare the counts directly in these cases because we'd likley expect that the count will be proportional to the size of the measurement unit, but this can easily be accounted for in a Poisson log-linear model. Suppose that we obtain counts $Y_1,\ldots,Y_N$ from units with size $a_1,\ldots,a_N$. A reasonable model might assume that the mean count is proportional to the size of the unit, after accounting for the other predictors in the model. That is, we might assume that $Y_i\sim \mbox{Poisson}(\mu_i)$ with
+In some problems the data may represent rates or densities not counts. This often occurs if the counts we have were obtained from time periods of different lengths or from regions of different size. We can't compare the counts directly in these cases because we'd likeley expect that the count will be proportional to the size of the measurement unit, but this can easily be accounted for in a Poisson log-linear model. Suppose that we obtain counts $Y_1,\ldots,Y_N$ from units with size $a_1,\ldots,a_N$. A reasonable model might assume that the mean count is proportional to the size of the unit, after accounting for the other predictors in the model. That is, we might assume that $Y_i\sim \mbox{Poisson}(\mu_i)$ with
 $$
   \mu_i=a_i \exp(\beta_0 + \beta_1 x_{i1} + \cdots + \beta_p x_{ip})
 $$
@@ -272,7 +273,8 @@ As an example of Poisson log-linear models we will analyse data from \citet{fudd
 
 The following plot illustrates the relationship between the size of the biggest fish he caught in each lake (in kilograms) and the number of ducks he counted on the lake.
 
-<<data>>=
+```{r}
+
 ## Load data
 ducks <- read_csv("ducks_on_lakes.csv")
 
@@ -284,22 +286,25 @@ ducks |>
   ylim(c(0,NA)) + 
   xlab("Size of Biggest Fish (kg)") + 
   ylab("Number of Ducks")
-@
+
+```
 
 #### Model 1
 
 The following code fits a Poisson log-linear model to the number of ducks on each lake as a function of the size of the biggest fish. 
-<<model1,echo=TRUE, include = TRUE>>=
+```{r}
+#| echo: true
+
 ## Poisson Model
 glm1 <- glm(Ducks ~ Fish,family=poisson(),data=ducks)
 summary(glm1)
 tidy(glm1, conf.int = TRUE)
-@
+```
+
 The results indicate that the the natural (base $e$) log of the mean number of ducks seen on a lake increases by .38 (95\%CI=.35,.42) for every 1~kg increase in the size of the biggest fish that Dr.~Fudd had ever caught on the lake. The effect is highly significant ($p<.001$). However, the residual deviance of 192.28 on 48 degrees of freedom raises some concern about the fit of the model ($p<.001$). Looking at the residual plot below there seems to be some sort of a trend and it seems that the variance may change from left to right, though it is somewhat hard to tell.
 
-\begin{center}
-<<residuals1>>=
 ## Plot residuals
+```{r}
 ducks1 <- augment(glm1)
 
 ducks1 |>
@@ -308,13 +313,12 @@ ducks1 |>
   xlab("Size of Biggest Fish (kg)") +
   ylab("Standardized Residual") + 
   geom_hline(yintercept = 0)
-@
-\end{center}
+
+```
 
 #### Model 2
 The reason for the lack of fit is that our analysis has not accounted for the size of the lake. Suppose that two lakes are the same in all aspects except that one is twice as big. We'd expect about twice as many ducks on the bigger one. The following plots illustrates the relationship between the size of the biggest fish and the density of ducks (i.e., ducks per unit area). This plot now seems to show the opposite effect with more ducks on lakes with smaller fish (and, hence, lower productivity according to Dr.~Fudd's criterion). 
-\begin{center}
-<<model1b>>=
+```{r}
 ## Plot 2: Ducks per square kilometer
 ducks |>
   mutate(Density = Fish/Area) |>
@@ -322,19 +326,21 @@ ducks |>
   geom_point() + 
   xlab("Fitted Mean") + 
   ylab("Number of Ducks/km^2")
-@
-\end{center}
+
+```
 
 After seeing this plot it make sense to model the density of ducks on each lake as a function of the size of the biggest fish. Unfortunately, the density of ducks is no longer integer valued and so we can't consider this quantity as the response in a Poisson log-linear model. However, we can achieve exactly the same thing by including the log of the lakes' area as an offset:
-<<model2, echo = TRUE>>=
+```{r}
+#| echo: true
+
 ## Analysis with offset
 glm2 <- glm(Ducks ~ Fish,family=poisson(),offset=log(Area),data=ducks)
 summary(glm2)
 tidy(glm2, conf.int = TRUE)
-@
+```
+
 The new results indicate that if the size of two lakes are the same then the log of the mean number of ducks decreases by .51 (95\%CI=.48,.55) for each 1~kg increase in the size of the biggest fish. I.e., if two lakes, call them Lakes 1 and 2, have the same size and the biggest fish in Lake 2 weighs 1~kg more than the biggest fish in Lake 1 then we expect there to be $e^{-.51}=..60$ times as many ducks on Lake 2 (95\%CI=.58,.62). The residual deviance of 43.22 on 48 degrees of freedom provides absolutely no concern about the fit of the model ($p=.33$), and there are no issues visible in the residuals plot below\footnote{I know this because I know the model fits the data perfectly.}. 
-\begin{center}
-<<residuals2>>=
+```{r}
 ## Plot residuals
 ducks2 <- augment(glm2)
 
@@ -344,9 +350,7 @@ ducks2 |>
   xlab("Fitted Mean") +
   ylab("Standardized Residual") + 
   geom_hline(yintercept = 0)
-@
-\end{center}
-Contrary to Dr.~Fudd's hypothesis, it seems that the density of ducks on a lake is inversely proportional to the size of the biggest fish head ever caught on the lake. For two lakes of the same size, the one with the bigger fish will have fewer ducks. Why would this be true? Big fish eat ducks!
 
-\end{document}
+```
+Contrary to Dr.~Fudd's hypothesis, it seems that the density of ducks on a lake is inversely proportional to the size of the biggest fish head ever caught on the lake. For two lakes of the same size, the one with the bigger fish will have fewer ducks. Why would this be true? Big fish eat ducks!
 
