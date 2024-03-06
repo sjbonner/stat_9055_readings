@@ -27,7 +27,7 @@ execute:
   message: false
   warning: false
   include: false
-bibliography: 9_multinomial_regression_1
+bibliography: 9_multinomial_regression_1.bib
 ---
 
 \linenumbers
@@ -41,11 +41,11 @@ By the end of the lecture you should be able to:
 
 # Example
 
-The example we're going to consider is one of my favourite data sets -- and I didn't make it up. The data come from a \textit{real} study of the food preferences of alligators living in four lakes in Florida and were collected by Dr. M.F. Delaney and Dr. C.T. Moore. \citep[pg. 294]{agresti2013} describes the experiment as follows:
+The example we're going to consider is one of my favourite data sets -- and I didn't make it up. The data come from a *real* study of the food preferences of alligators living in four lakes in Florida and were collected by Dr. M.F. Delaney and Dr. C.T. Moore. @agresti2013 [p. 294] describes the experiment as follows:
 \begin{quote}
-  ``The study captured 219 alligators in four Florida lakes. The nomial response variable is the primary food type, in volume, found in the alligator's stomach. This had five categories: fish, invertebrate, reptile, bird, other.''
+  "The study captured 219 alligators in four Florida lakes. The nominal response variable is the primary food type, in volume, found in the alligator's stomach. This had five categories: fish, invertebrate, reptile, bird, other."
 \end{quote}
-Agresti goes on to explain that the stomach contents of one alligator contained the ``tags of 23 baby alligators released in the lake in the previous year'' and that the other category includes ``amphibian, mammal, plant material, stones or other debris, or no food or dominant type''. The simple answer to the question ``What does an alligator eat'?'' is also the puchline of the joke ``What do you feed a 1000 pound gorilla for lunch?'' Anything it wants! However, the goal of the analysis is to find out what factors affect the alligators' food preferences, and there are some interesting patterns. In particular, we will model the food choices as a function of each alligator's size, gender, and the lake it was found in. The data are contained in the file `alligator\_data.csv`.
+Agresti goes on to explain that the stomach contents of one alligator contained the "tags of 23 baby alligators released in the lake in the previous year" and that the other category includes "amphibian, mammal, plant material, stones or other debris, or no food or dominant type". The simple answer to the question "What does an alligator eat?" is also the puchline of the joke "What do you feed a 1000 pound gorilla for lunch?" Anything it wants! However, the goal of the analysis is to find out what factors affect the alligators' food preferences, and there are some interesting patterns. In particular, we will model the food choices as a function of each alligator's size, gender, and the lake it was found in. The data are contained in the file `alligator\_data.csv`.
 
 ```{r}
 #| include: true
@@ -285,7 +285,7 @@ Notice that the output contains three parameters for each of the food choices ot
 Comparisons between the preference for reptiles to the other food choices can be conducted in the same way. The most significant effect is that modelling the effect of size on the probability of eating invertebrates (category 3) relative to the probability of eating reptiles. The model suggests that the relative probability is $e^{1.79}=5.99$ times higher for small alligators than for large alligators (95\%CI = 1.84,19.46). The confidence interval is wide, but does not cover 1 and the message is clear. Small alligators are more likely to eat invertebrates. This makes sense. Invebrates (things without spines) are small and easily eaten by small alligators. Reptiles are big and make a nice lunch for big alligators.
 
 ```{r}
-#| echo: true
+#| echo: false
 #| include: true
 #| label: tbl-list-1
 #| tbl-cap: "Results of fitting the multinomial model with default baseline category to the alligator data."
@@ -313,3 +313,5 @@ Although I chose to fit the alligator data with a multinomial regression model i
 which shows that $\bm Y|n \sim \mbox{Multinomial}(n,\bm \pi)$ where $\bm \pi=(\mu_1/\mu,\ldots,\mu_K/\mu)'$.
 
 What this means is that fitting a Poisson model to a contingency table is essentially the same as fitting a multinomial model. The difference is that the Poisson model treats the sample size as random (i.e., not fixed before the experiment) while the multinomial treats the sample size as fixed. In this case we should probably have fit a Poisson model since it is hard to believe that the researchers pre-specified a sample size of 219. It's more likely that this is simply the number they were able to catch. However, if what we are interested in is the association between two variables then it doesn't matter if we fit a multinomial regression or a Poisson log-linear model. Our inferences will be the same. 
+
+# References
